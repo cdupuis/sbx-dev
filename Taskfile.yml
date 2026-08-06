@@ -1,0 +1,79 @@
+version: '3'
+
+vars:
+  BIN: '{{.ROOT_DIR}}/bin'
+  SERVER_ADDR: '127.0.0.1:7391'
+
+tasks:
+  default:
+    cmds:
+      - task: validate
+      - task: test
+
+  build:
+    desc: Build both binaries for the host platform into ./bin
+    cmds:
+      - mkdir -p {{.BIN}}
+      - go build -o {{.BIN}}/sbx-dev ./cmd/sbx-dev
+      - go build -o {{.BIN}}/sbx ./cmd/sbx
+
+  build:client:
+    desc: Cross-build the sbx client for a sandbox (GOOS/GOARCH override the defaults)
+    vars:
+      GOOS: '{{.GOOS | default "linux"}}'
+      GOARCH: '{{.GOARCH | default "arm64"}}'
+    cmds:
+      - mkdir -p {{.BIN}}
+      - GOOS={{.GOOS}} GOARCH={{.GOARCH}} CGO_ENABLED=0 go build -o {{.BIN}}/sbx-{{.GOOS}}-{{.GOARCH}} ./cmd/sbx
+      - echo "built {{.BIN}}/sbx-{{.GOOS}}-{{.GOARCH}}"
+
+  build:client:all:
+    desc: Cross-build the sbx client for linux/amd64 and linux/arm64
+    cmds:
+      - task: build:client
+        vars: {GOOS: linux, GOARCH: amd64}
+      - task: build:client
+        vars: {GOOS: linux, GOARCH: arm64}
+
+  install:client:
+    desc: Cross-build the client and install it into a sandbox as /usr/local/bin/sbx
+    requires:
+      vars: [SANDBOX]
+    vars:
+      GOOS: '{{.GOOS | default "linux"}}'
+      GOARCH: '{{.GOARCH | default "arm64"}}'
+    cmds:
+      - task: build:client
+        vars: {GOOS: '{{.GOOS}}', GOARCH: '{{.GOARCH}}'}
+      - sbx cp {{.BIN}}/sbx-{{.GOOS}}-{{.GOARCH}} {{.SANDBOX}}:/usr/local/bin/sbx
+
+  test:
+    desc: Run all tests
+    cmds:
+      - go test ./...
+
+  test:race:
+    desc: Run all tests with the race detector
+    cmds:
+      - go test -race ./...
+
+  validate:
+    desc: Check formatting, vet and module tidiness
+    cmds:
+      - test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
+      - go vet ./...
+      - go mod tidy -diff
+
+  run:
+    desc: Run the server in the foreground against the host's sbx
+    cmds:
+      - go run ./cmd/sbx-dev --addr {{.SERVER_ADDR}} {{.CLI_ARGS}}
+
+  allow:
+    desc: Add the sandbox network policy rule the client needs
+    cmds:
+      - sbx policy allow network localhost:{{.SERVER_ADDR | splitList ":" | last}}
+
+  clean:
+    cmds:
+      - rm -rf {{.BIN}}
