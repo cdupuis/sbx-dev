@@ -99,13 +99,76 @@ func (l *stringList) Set(value string) error {
 
 func main() {
 	run := run
-	if len(os.Args) > 1 && os.Args[1] == "grant" {
-		run = func() error { return runGrant(os.Args[2:]) }
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "grant":
+			run = func() error { return runGrant(os.Args[2:]) }
+		case "revoke":
+			run = func() error { return runRevoke(os.Args[2:]) }
+		}
 	}
 	if err := run(); err != nil {
+		// A subcommand parses with ContinueOnError so that a usage error stays in
+		// its own flag set, which also surfaces an answered -h as a failure.
+		if errors.Is(err, flag.ErrHelp) {
+			return
+		}
 		fmt.Fprintf(os.Stderr, "sbx-warden: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+func runRevoke(args []string) error {
+	defaultRegistryPath, registryPathErr := identity.DefaultRegistryPath()
+
+	fs := flag.NewFlagSet("sbx-warden revoke", flag.ContinueOnError)
+	registryPath := fs.String("registry-file", defaultRegistryPath, "file recording which token generations are current")
+	fs.Usage = func() {
+		out := fs.Output()
+		fmt.Fprintf(out, "Usage: sbx-warden revoke [flags] SANDBOX\n\nRetires every token a sandbox holds, without issuing one to replace them, so the\nsandbox has no identity until it is granted a new one.\n\nA running server picks this up on its own: it takes effect on the sandbox's next\ncommand, and ends any session it already had open.\n\nFlags:\n")
+		fs.PrintDefaults()
+	}
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() != 1 {
+		fs.Usage()
+		return errors.New("revoke takes exactly one sandbox name")
+	}
+	if registryPathErr != nil && *registryPath == "" {
+		return registryPathErr
+	}
+
+	registry, err := identity.OpenRegistry(*registryPath)
+	if err != nil {
+		return err
+	}
+	// Read for the report only. The revocation itself re-reads and is atomic, so
+	// this racing another grant costs accurate wording, not a missed revocation.
+	sandbox := fs.Arg(0)
+	granted, err := registry.Minimum(sandbox)
+	if err != nil {
+		return fmt.Errorf("revoke %s: %w", sandbox, err)
+	}
+	if _, err := registry.Revoke(sandbox); err != nil {
+		return fmt.Errorf("revoke %s: %w", sandbox, err)
+	}
+
+	if granted == 0 {
+		fmt.Printf("%s held no sbx-warden token, so nothing was retired.\n", sandbox)
+		fmt.Printf("\nCheck the name if you expected otherwise: a sandbox that was never granted\nlooks the same here as one that does not exist.\n")
+		return nil
+	}
+
+	fmt.Printf("Revoked every sbx-warden token for %s.\n", sandbox)
+	fmt.Printf(`
+A running server needs no restart: it reads the registry for every command and
+rechecks the sessions it is already running.
+
+%s keeps whatever placeholder it was created with, which no longer resolves to a
+usable token. Run "sbx-warden grant %s" to give it a working identity again.
+`, sandbox, sandbox)
+	return nil
 }
 
 func runGrant(args []string) error {
@@ -184,6 +247,7 @@ func run() error {
 		showVer   = flag.Bool("version", false, "print the version and exit")
 		policyMap = flag.String("policy-map", defaultMap, "path or URL of the policy map binding Cedar policies to sandbox names and patterns; empty runs with no policy, letting every granted sandbox run any allowed subcommand")
 		keyPath   = flag.String("key-file", "", "file holding the identity key that verifies session tokens (default: the same file sbx-warden grant uses)")
+		regPath   = flag.String("registry-file", "", "file recording which token generations are current, reread for every command so revoking takes effect without a restart (default: the same file sbx-warden grant and revoke use)")
 		allow     stringList
 		allowEnv  stringList
 	)
@@ -192,7 +256,7 @@ func run() error {
 
 	flag.Usage = func() {
 		out := flag.CommandLine.Output()
-		fmt.Fprintf(out, "Usage: sbx-warden [flags]\n       sbx-warden grant [flags] SANDBOX\n\nServes the host's sbx CLI over TCP for sbx clients in sandboxes.\n\nThe grant subcommand issues a sandbox an identity token; run \"sbx-warden grant -h\"\nfor its flags.\n\nFlags:\n")
+		fmt.Fprintf(out, "Usage: sbx-warden [flags]\n       sbx-warden grant [flags] SANDBOX\n       sbx-warden revoke [flags] SANDBOX\n\nServes the host's sbx CLI over TCP for sbx clients in sandboxes.\n\nThe grant subcommand issues a sandbox an identity token and revoke retires the\nones it holds; run \"sbx-warden grant -h\" or \"sbx-warden revoke -h\" for their\nflags.\n\nFlags:\n")
 		flag.PrintDefaults()
 	}
 	flag.Parse()
@@ -222,7 +286,7 @@ func run() error {
 		AllowEnv:      allowEnv,
 		Logger:        log,
 	}
-	if err := configureIdentity(&cfg, *keyPath); err != nil {
+	if err := configureIdentity(&cfg, *keyPath, *regPath); err != nil {
 		return err
 	}
 	if *policyMap != "" {
@@ -275,7 +339,7 @@ func run() error {
 //
 // The key is created when absent so that starting the server and granting a
 // sandbox work in either order, and both reach the same file.
-func configureIdentity(cfg *server.Config, keyPath string) error {
+func configureIdentity(cfg *server.Config, keyPath, registryPath string) error {
 	var err error
 	if keyPath == "" {
 		if keyPath, err = identity.DefaultKeyPath(); err != nil {
@@ -286,9 +350,10 @@ func configureIdentity(cfg *server.Config, keyPath string) error {
 		return err
 	}
 
-	registryPath, err := identity.DefaultRegistryPath()
-	if err != nil {
-		return err
+	if registryPath == "" {
+		if registryPath, err = identity.DefaultRegistryPath(); err != nil {
+			return err
+		}
 	}
 	cfg.Generations, err = identity.OpenRegistry(registryPath)
 	return err

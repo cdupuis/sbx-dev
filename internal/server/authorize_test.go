@@ -137,7 +137,7 @@ func TestSessionRefusesARetiredToken(t *testing.T) {
 	require.NoError(t, ps.registry.Record("worker-1", 2))
 
 	got := runClient(t, ps.addr, retired, nil, "version")
-	require.ErrorContains(t, got.err, "has been replaced")
+	require.ErrorContains(t, got.err, "has been retired")
 
 	current := runClient(t, ps.addr, ps.token(t, "worker-1", 2), nil, "version")
 	require.NoError(t, current.err)

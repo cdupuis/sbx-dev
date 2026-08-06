@@ -79,6 +79,13 @@ func writeFakeSbx(t *testing.T) string {
 // startServer runs a server on an ephemeral loopback port and returns its address.
 func startServer(t *testing.T, cfg Config) string {
 	t.Helper()
+	return startServerInstance(t, cfg).Addr().String()
+}
+
+// startServerInstance is startServer for a test that has to inspect the server
+// rather than only talk to it.
+func startServerInstance(t *testing.T, cfg Config) *Server {
+	t.Helper()
 	if runtime.GOOS == "windows" {
 		t.Skip("the stand-in sbx binary is a POSIX shell script")
 	}
@@ -114,7 +121,7 @@ func startServer(t *testing.T, cfg Config) string {
 		}
 	})
 
-	return srv.Addr().String()
+	return srv
 }
 
 type result struct {

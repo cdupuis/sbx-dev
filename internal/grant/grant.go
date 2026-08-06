@@ -63,7 +63,11 @@ func Run(ctx context.Context, out io.Writer, cfg Config) error {
 
 	generation := cfg.Generation
 	if generation == 0 {
-		generation = cfg.Registry.Next(cfg.Sandbox)
+		var err error
+		generation, err = cfg.Registry.Next(cfg.Sandbox)
+		if err != nil {
+			return fmt.Errorf("grant: read generation registry: %w", err)
+		}
 	}
 
 	token, err := cfg.Key.Mint(cfg.Sandbox, generation)

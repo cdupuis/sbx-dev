@@ -53,8 +53,17 @@ func (s *Server) authenticate(peer, token string) (caller, error) {
 	if err != nil {
 		return caller{}, errors.New("invalid token")
 	}
-	if s.cfg.Generations != nil && !s.cfg.Generations.Accepts(id) {
-		return caller{}, fmt.Errorf("the token for %s has been replaced", id.Sandbox)
+	if s.cfg.Generations != nil {
+		current, err := s.cfg.Generations.Accepts(id)
+		if err != nil {
+			// A registry that cannot be read is not evidence that a token is
+			// still current, and this is the one place that can still refuse.
+			s.log.Error(fmt.Sprintf("could not check whether the token for %s is current: %v", id.Sandbox, err))
+			return caller{}, errors.New("this server cannot check whether your token is current")
+		}
+		if !current {
+			return caller{}, fmt.Errorf("the token for %s has been retired", id.Sandbox)
+		}
 	}
 	return caller{peer: peer, sandbox: id}, nil
 }

@@ -75,7 +75,7 @@ Grant the sandbox first, then create it under that name:
 ```bash
 sbx-warden grant my-sandbox
 sbx create shell . --name my-sandbox \
-  --kit 'git+https://github.com/cdupuis/sbx-warden.git#ref=v0.6.0&dir=kit/sbx-warden'
+  --kit 'git+https://github.com/cdupuis/sbx-warden.git#ref=v0.7.0&dir=kit/sbx-warden'
 ```
 
 Granting is what lets the server recognise the sandbox, and it is the only way
@@ -198,7 +198,7 @@ pass:
 
 ```bash
 sbx-warden grant my-sandbox
-sbx kit add my-sandbox 'git+https://github.com/cdupuis/sbx-warden.git#ref=v0.6.0&dir=kit/sbx-warden'
+sbx kit add my-sandbox 'git+https://github.com/cdupuis/sbx-warden.git#ref=v0.7.0&dir=kit/sbx-warden'
 ```
 
 Granting on its own has no effect until the sandbox is recreated, because a
@@ -279,8 +279,13 @@ Environment variables are not forwarded by default; name them explicitly in
 inherits the server's environment.
 
 Server flags: `--addr`, `--sbx`, `--workdir`, `--allow-command`, `--allow-env`,
-`--allow-any-bind`, `--verbose`, `--version`, `--policy-map` and `--key-file`.
-Run `sbx-warden --help` for details.
+`--allow-any-bind`, `--verbose`, `--version`, `--policy-map`, `--key-file` and
+`--registry-file`. Run `sbx-warden --help` for details.
+
+`--key-file` and `--registry-file` default to the files `grant` and `revoke` use,
+so leave them alone unless you move both sides together: a server reading a
+different registry than `revoke` writes would report a revocation that never took
+effect. `SBX_WARDEN_KEY_FILE` and `SBX_WARDEN_REGISTRY_FILE` move both at once.
 
 The client reports its own version through `SBX_WARDEN_PRINT_VERSION` rather than a
 flag, because every argument belongs to the remote CLI.
@@ -295,6 +300,34 @@ The signing key is what that rests on. Whoever holds `~/.sbx-warden/identity.key
 can mint a token for any name, so treat it like an SSH key; it is written `0600`
 in a `0700` directory. Loopback binding limits *who* can present a token, not
 what a token permits.
+
+### Taking access away
+
+```bash
+sbx-warden revoke my-sandbox
+```
+
+That retires every token the sandbox holds without issuing one to replace them,
+so it has no identity until you grant it again. Granting also retires the token
+it replaces, so rotate with `grant` and cut off with `revoke`.
+
+Either takes effect on a running server without a restart. The sandbox's next
+command is refused, and a session it already had open — a shell somebody left
+running under `sbx exec` — is ended within a few seconds, because a session
+authenticates once at its start and would otherwise outlive the token that opened
+it.
+
+What makes that work is that `~/.sbx-warden/generations.json` is the record
+rather than anything the server holds in memory: it records the lowest token
+generation each sandbox may still present, and the server consults it for every
+command. So the file is worth the same care as the key. Deleting it does not lock
+anyone out — an absent registry means nothing was ever revoked, which restores
+every token you retired.
+
+Rotating the signing key is the blunt instrument: it invalidates every sandbox at
+once rather than one, and needs a restart, since the key is read at start-up.
+
+### Narrowing what a sandbox may do
 
 Two controls narrow what a granted sandbox may then do, and they answer different
 questions.

@@ -105,8 +105,14 @@ func TestRunRetiresTheEarlierGeneration(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, first.Generation+1, second.Generation)
-	require.True(t, cfg.Registry.Accepts(second))
-	require.False(t, cfg.Registry.Accepts(first), "the replaced token must stop authenticating")
+
+	currentAccepted, err := cfg.Registry.Accepts(second)
+	require.NoError(t, err)
+	require.True(t, currentAccepted)
+
+	replacedAccepted, err := cfg.Registry.Accepts(first)
+	require.NoError(t, err)
+	require.False(t, replacedAccepted, "the replaced token must stop authenticating")
 	require.Contains(t, out.String(), "no longer authenticate")
 }
 
@@ -132,7 +138,9 @@ func TestRunLeavesTheCurrentTokenAliveWhenSbxFails(t *testing.T) {
 
 	// A grant that never reached sbx must not retire the generation the sandbox
 	// is still using.
-	require.Equal(t, 4, cfg.Registry.Minimum("worker-1"))
+	current, err := cfg.Registry.Minimum("worker-1")
+	require.NoError(t, err)
+	require.Equal(t, 4, current)
 }
 
 func TestRunRequiresASandboxName(t *testing.T) {

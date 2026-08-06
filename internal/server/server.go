@@ -70,6 +70,10 @@ type Config struct {
 	// Generations retires tokens that have been reissued. A nil registry accepts
 	// every generation, which is the state of a server that has revoked nothing.
 	Generations *identity.Registry
+	// RevocationInterval is how often running sessions are rechecked against the
+	// registry, so a retired token loses a session it already opened. Zero takes
+	// the default.
+	RevocationInterval time.Duration
 	// Catalog describes the sbx command tree an argv is resolved against. It
 	// defaults to the embedded snapshot.
 	Catalog *catalog.Catalog
@@ -87,6 +91,7 @@ type Server struct {
 	allow    map[string]struct{}
 	allowEnv map[string]struct{}
 	tickets  *tickets
+	live     *liveSessions
 	log      *slog.Logger
 
 	mu sync.Mutex
@@ -123,6 +128,9 @@ func New(cfg Config) (*Server, error) {
 
 	if cfg.HandshakeTimeout <= 0 {
 		cfg.HandshakeTimeout = defaultHandshakeTimeout
+	}
+	if cfg.RevocationInterval <= 0 {
+		cfg.RevocationInterval = defaultRevocationInterval
 	}
 	if cfg.Logger == nil {
 		cfg.Logger = slog.New(slog.DiscardHandler)
@@ -165,6 +173,7 @@ func New(cfg Config) (*Server, error) {
 		allow:    allow,
 		allowEnv: allowEnv,
 		tickets:  newTickets(cfg.TicketTTL, nil),
+		live:     newLiveSessions(),
 		log:      cfg.Logger,
 	}, nil
 }
@@ -224,6 +233,10 @@ func (s *Server) Serve(ctx context.Context) error {
 		<-ctx.Done()
 		_ = s.Close()
 	}()
+
+	if s.cfg.Generations != nil {
+		go s.watchRevocations(ctx)
+	}
 
 	var wg sync.WaitGroup
 	defer wg.Wait()
@@ -292,6 +305,22 @@ func (s *Server) runFramedSession(ctx context.Context, conn net.Conn) {
 	// takes to answer a prompt, which is not a stalled connection.
 	_ = conn.SetDeadline(time.Time{})
 
+	// What the server says to a caller shares the stream a command's stderr uses.
+	// A session with a PTY reports the command's own output as stdout, so for that
+	// session these are the only stderr frames it will ever carry.
+	notify := fw.Stream(protocol.KindStderr)
+
+	// Tracked from here rather than from when the command starts, so a session
+	// waiting on an approval prompt is also ended if its token is retired.
+	ctx, stop := context.WithCancel(ctx)
+	defer stop()
+	tracked := s.live.add(liveSession{
+		caller: caller,
+		stop:   stop,
+		notify: notify,
+	})
+	defer s.live.remove(tracked)
+
 	if err := s.checkAllowed(start.Args); err != nil {
 		s.log.Warn(fmt.Sprintf("rejected %s: %v", peer, err))
 		_ = fw.WriteJSON(protocol.KindExit, protocol.Exit{
@@ -300,7 +329,7 @@ func (s *Server) runFramedSession(ctx context.Context, conn net.Conn) {
 		})
 		return
 	}
-	if err := s.authorize(ctx, caller, start.Args, fw.Stream(protocol.KindStderr)); err != nil {
+	if err := s.authorize(ctx, caller, start.Args, notify); err != nil {
 		s.log.Warn(fmt.Sprintf("rejected %s: %v", caller, err))
 		_ = fw.WriteJSON(protocol.KindExit, protocol.Exit{
 			Code:    protocol.ExitNoExec,
