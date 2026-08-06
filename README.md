@@ -15,7 +15,48 @@ help text work as if the CLI were installed locally. Interactive commands work
 too: the client negotiates a remote PTY when its stdin is a terminal, and
 forwards window-size changes.
 
-## Build
+## Install
+
+On Linux or macOS:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/cdupuis/sbx-dev/main/install.sh | sh
+```
+
+On Windows, in PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/cdupuis/sbx-dev/main/install.ps1 | iex
+```
+
+Both binaries are installed by default. Add `--server` or `--client` to pick one
+— on your host you only need the server, and inside a sandbox only the client:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/cdupuis/sbx-dev/main/install.sh | sh -s -- --server
+```
+
+The installers download the latest GitHub release, verify it against the
+published `checksums.txt`, and install into `/usr/local/bin` when it is writable
+or `~/.local/bin` otherwise (`%LOCALAPPDATA%\sbx-dev\bin` on Windows). They never
+invoke `sudo`, since a piped script has no terminal to prompt on.
+
+Because the client is called `sbx`, installing it where a real Docker Sandboxes
+CLI already lives would shadow that CLI. The installers detect this and skip the
+client rather than break your `sbx`; use `--force` or `--dir` if you meant it.
+
+| Option                  | Environment variable    | Purpose                          |
+| ----------------------- | ----------------------- | -------------------------------- |
+| `--client` / `--server` | `SBX_DEV_COMPONENTS`    | Which binaries to install.       |
+| `--version VERSION`     | `SBX_DEV_VERSION`       | Install a specific release.      |
+| `--dir DIRECTORY`       | `SBX_DEV_INSTALL_DIR`   | Where to install.                |
+| `--force`               | —                       | Replace a foreign `sbx`.         |
+| —                       | `SBX_DEV_DOWNLOAD_BASE` | Mirror serving release archives. |
+
+Piping to `iex` cannot pass parameters, so the Windows installer reads the
+environment variables above.
+
+## Build from source
 
 ```bash
 task build                 # ./bin/sbx-dev and ./bin/sbx for this host
@@ -48,7 +89,15 @@ evaluating policy while rules are matched verbatim:
 sbx policy allow network localhost:7391
 ```
 
-Install the client and point it at the host:
+Get the client into the sandbox. Either run the installer inside it, which needs
+`raw.githubusercontent.com` and `objects.githubusercontent.com` allowed in the
+sandbox's policy:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/cdupuis/sbx-dev/main/install.sh | sh -s -- --client
+```
+
+Or copy a locally built binary in, which needs no extra egress:
 
 ```bash
 task install:client SANDBOX=my-sandbox     # or: sbx cp ./bin/sbx-linux-arm64 my-sandbox:/usr/local/bin/sbx
@@ -62,9 +111,6 @@ export SBX_DEV_TOKEN=<token from ~/.sbx-dev/token on the host>
 sbx ls
 ```
 
-Install the client somewhere that does **not** shadow a real `sbx` on the host's
-`PATH`; it is only meant to be the `sbx` inside a sandbox.
-
 ## Configuration
 
 The client takes no flags of its own, so that every flag reaches the real CLI.
@@ -77,13 +123,17 @@ It reads:
 | `SBX_DEV_TOKEN_FILE`  | `~/.sbx-dev/token`             | Token file, read when `SBX_DEV_TOKEN` is unset. |
 | `SBX_DEV_FORWARD_ENV` | —                              | Comma-separated env var names to send along.   |
 | `SBX_DEV_NO_TTY`      | —                              | Set to any value to suppress PTY allocation.   |
+| `SBX_DEV_PRINT_VERSION` | —                            | Print the client's version and exit.           |
 
 Environment variables are not forwarded by default; name them explicitly in
 `SBX_DEV_FORWARD_ENV` when a command needs them. The child process otherwise
 inherits the server's environment.
 
 Server flags: `--addr`, `--sbx`, `--token-file`, `--workdir`, `--allow-command`,
-`--allow-any-bind`, `--verbose`. Run `sbx-dev --help` for details.
+`--allow-any-bind`, `--verbose`, `--version`. Run `sbx-dev --help` for details.
+
+The client reports its own version through `SBX_DEV_PRINT_VERSION` rather than a
+flag, because every argument belongs to the remote CLI.
 
 ## Security
 
@@ -107,3 +157,20 @@ multiplexing stdin, stdout, stderr, window resizes and signals, ending with an
 `exit` frame carrying the command's status. Frames are capped at 1 MiB.
 Disconnecting kills the remote process group, so a dropped connection never
 leaves work running unattended.
+
+## Releasing
+
+Pushing a `v*` tag runs [GoReleaser](https://goreleaser.com) in CI, which builds
+both binaries for linux, darwin and windows on amd64 and arm64, then publishes
+one archive per binary plus `checksums.txt` to a GitHub release:
+
+```bash
+git tag -a v0.1.0 -m v0.1.0 && git push origin v0.1.0
+```
+
+Check the configuration and rehearse a build without publishing anything:
+
+```bash
+goreleaser check
+goreleaser release --snapshot --clean --skip=publish
+```

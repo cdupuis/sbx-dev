@@ -9,6 +9,7 @@
 //	SBX_DEV_TOKEN_FILE   token file (default ~/.sbx-dev/token)
 //	SBX_DEV_FORWARD_ENV  comma-separated env var names to send to the server
 //	SBX_DEV_NO_TTY       set to disable remote PTY allocation
+//	SBX_DEV_PRINT_VERSION  print this client's version and exit
 package main
 
 import (
@@ -26,7 +27,19 @@ import (
 
 const defaultAddr = "host.docker.internal:7391"
 
+// version is overwritten at link time by the release build.
+var version = "dev"
+
 func main() {
+	// Arguments belong to the remote CLI, so this binary's own version is
+	// reported through the environment. Installers also use the "sbx-dev
+	// client" prefix to recognise their own binary before replacing an sbx on
+	// PATH.
+	if os.Getenv("SBX_DEV_PRINT_VERSION") != "" {
+		fmt.Printf("sbx-dev client %s\n", version)
+		return
+	}
+
 	addr := envOr("SBX_DEV_ADDR", defaultAddr)
 
 	token, err := resolveToken()

@@ -21,6 +21,9 @@ import (
 // DefaultPort is the port both binaries assume when none is configured.
 const DefaultPort = "7391"
 
+// version is overwritten at link time by the release build.
+var version = "dev"
+
 type stringList []string
 
 func (l *stringList) String() string { return strings.Join(*l, ",") }
@@ -51,6 +54,7 @@ func run() error {
 		workdir   = flag.String("workdir", "", "working directory for remote commands (default: current directory)")
 		verbose   = flag.Bool("verbose", false, "log at debug level")
 		allowAny  = flag.Bool("allow-any-bind", false, "permit binding a non-loopback address")
+		showVer   = flag.Bool("version", false, "print the version and exit")
 		allow     stringList
 	)
 	flag.Var(&allow, "allow-command", "restrict to these sbx subcommands (repeatable, comma-separated); default allows all")
@@ -62,6 +66,10 @@ func run() error {
 	}
 	flag.Parse()
 
+	if *showVer {
+		fmt.Printf("sbx-dev server %s\n", version)
+		return nil
+	}
 	if flag.NArg() > 0 {
 		return fmt.Errorf("unexpected argument %q", flag.Arg(0))
 	}

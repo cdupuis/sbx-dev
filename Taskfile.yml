@@ -64,6 +64,16 @@ tasks:
       - go vet ./...
       - go mod tidy -diff
 
+  release:check:
+    desc: Validate the GoReleaser configuration
+    cmds:
+      - goreleaser check
+
+  release:snapshot:
+    desc: Build the release archives locally without publishing
+    cmds:
+      - goreleaser release --snapshot --clean --skip=publish
+
   run:
     desc: Run the server in the foreground against the host's sbx
     cmds:

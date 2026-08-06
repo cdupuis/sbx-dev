@@ -1,0 +1,102 @@
+version: 2
+
+project_name: sbx-dev
+
+before:
+  hooks:
+    - go mod tidy
+    - go test ./...
+
+builds:
+  # The server runs on a developer's host, so it covers the desktop platforms.
+  - id: sbx-dev
+    main: ./cmd/sbx-dev
+    binary: sbx-dev
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+
+  # The client runs inside a sandbox, but is built for every host platform too
+  # so it can be exercised against a local server.
+  - id: sbx
+    main: ./cmd/sbx
+    binary: sbx
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+
+# Separate archives per binary: installing the client into a sandbox should not
+# require downloading the server, and the install scripts fetch only what was
+# asked for.
+archives:
+  - id: server
+    ids: [sbx-dev]
+    name_template: "sbx-dev_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - README.md
+
+  - id: client
+    ids: [sbx]
+    name_template: "sbx-client_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - README.md
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "^ci:"
+      - Merge pull request
+      - Merge branch
+
+release:
+  github:
+    owner: cdupuis
+    name: sbx-dev
+  prerelease: auto
+  name_template: "{{ .Version }}"
+  footer: |
+    ## Install
+
+    Linux or macOS:
+
+    ```sh
+    curl -fsSL https://raw.githubusercontent.com/cdupuis/sbx-dev/main/install.sh | sh
+    ```
+
+    Windows (PowerShell):
+
+    ```powershell
+    irm https://raw.githubusercontent.com/cdupuis/sbx-dev/main/install.ps1 | iex
+    ```
+
+    Pass `--server` or `--client` to install just one binary. The server runs on
+    the host; the client belongs inside a sandbox.
