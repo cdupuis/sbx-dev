@@ -2,6 +2,7 @@ version: '3'
 
 vars:
   BIN: '{{.ROOT_DIR}}/bin'
+  KIT: '{{.ROOT_DIR}}/kit/sbx-dev'
   SERVER_ADDR: '127.0.0.1:7391'
 
 tasks:
@@ -63,6 +64,24 @@ tasks:
       - test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
       - go vet ./...
       - go mod tidy -diff
+
+  kit:validate:
+    desc: Validate the kit and check that it pins the release its version claims
+    silent: true
+    cmds:
+      - |
+        set -eu
+        declared=$(sed -n 's/^version: "\(.*\)"$/\1/p' {{.KIT}}/spec.yaml)
+        pinned=$(sed -n 's/^ *version=v\(.*\)$/\1/p' {{.KIT}}/spec.yaml)
+        if [ -z "$declared" ] || [ -z "$pinned" ]; then
+          echo "could not read both versions out of {{.KIT}}/spec.yaml" >&2
+          exit 1
+        fi
+        if [ "$declared" != "$pinned" ]; then
+          echo "kit declares version $declared but installs client v$pinned" >&2
+          exit 1
+        fi
+      - sbx kit validate {{.KIT}}
 
   release:check:
     desc: Validate the GoReleaser configuration

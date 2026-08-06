@@ -1,0 +1,58 @@
+schemaVersion: "2"
+kind: mixin
+name: sbx-dev
+version: "0.2.0"
+displayName: sbx-dev client
+description: |
+  Installs the sbx-dev client, which forwards sbx commands to the sbx-dev
+  server on the host over TCP. This grants the sandbox the host's Docker
+  Sandboxes control plane, which is enough to read and write host files and to
+  lift the sandbox's own network policy. Add it only to sandboxes you would
+  trust with your host.
+sourceURL: https://github.com/cdupuis/sbx-dev
+licenses:
+  - MIT
+
+permissions:
+  network:
+    allow:
+      - raw.githubusercontent.com
+      - github.com
+      - release-assets.githubusercontent.com
+      # The egress proxy rewrites host.docker.internal to localhost before it
+      # evaluates policy, while rules match verbatim, so the server's port has
+      # to be allowed under localhost rather than under the name the client
+      # dials.
+      - localhost:7391
+
+environment:
+  variables:
+    SBX_DEV_ADDR: host.docker.internal:7391
+
+setup:
+  install:
+    - description: Install the sbx-dev client from its pinned release
+      # Downloading the installer instead of piping it into sh keeps a failed
+      # fetch fatal: POSIX sh has no pipefail, so a piped installer that never
+      # arrives would exit 0 and leave the sandbox without a client.
+      command: |
+        set -eu
+        version=v0.2.0
+        installer="$(mktemp)"
+        trap 'rm -f "$installer"' EXIT
+        curl -fsSL --retry 3 -o "$installer" \
+          "https://raw.githubusercontent.com/cdupuis/sbx-dev/${version}/install.sh"
+        sh "$installer" --client --version "$version" --dir /usr/local/bin
+
+agentInstructions:
+  content: |
+    ## sbx
+
+    The `sbx` command in this sandbox is a client for the Docker Sandboxes CLI
+    running on the host. Subcommands act on the host's sandboxes, not on this
+    one, so `sbx ls` lists sandboxes alongside this one rather than anything
+    inside it.
+
+    Every call needs `SBX_DEV_TOKEN` to hold the host server's token. Without
+    it the server rejects the session, and the client cannot tell that apart
+    from the host having no server running.

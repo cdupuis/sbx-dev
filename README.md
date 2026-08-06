@@ -3,6 +3,25 @@
 Exposes the host's [`sbx`](https://github.com/docker/sandboxes) CLI over TCP so
 an agent inside a sandbox can drive Docker Sandboxes on the host.
 
+> [!WARNING]
+> **This dismantles the boundary a sandbox exists to enforce.** A sandbox
+> confines an agent; running this hands that agent your host's control plane,
+> which is enough to escape. Both escapes below were reproduced against a
+> default-deny policy, from a sandbox whose only workspace was an empty
+> directory:
+>
+> - **Read and write any file on the host.** `sbx create shell /any/host/path`
+>   mounts a host directory into a new sandbox, and `sbx exec` reads and writes
+>   it as your user. The agent needs no access to the path itself.
+> - **Lift its own network restrictions.** Running `sbx policy allow network
+>   example.com:443` from inside made that domain reachable where it had just
+>   been blocked, and the rule landed at *global* scope, so it applied to every
+>   other sandbox on the host too.
+>
+> A coding agent acts on what it reads — a repository, an issue, a web page — so
+> assume anything it reads can reach your host. Run this only where that is
+> acceptable, and narrow it with `--allow-command`. See [Security](#security).
+
 Two binaries:
 
 | Binary    | Runs on           | Role                                                          |
@@ -81,6 +100,38 @@ publish your `sbx` CLI to the LAN and buys nothing.
 
 ## Set up the client in a sandbox
 
+### With the kit
+
+`kit/sbx-dev` is a v2 kit that installs the client while the sandbox is being
+created, allows the egress it needs, and points the client at the host:
+
+```bash
+export SBX_DEV_TOKEN=$(cat ~/.sbx-dev/token)
+sbx create shell . --kit ./kit/sbx-dev --env SBX_DEV_TOKEN
+```
+
+The kit deliberately does not carry the token. Kit environment values are
+literal, so a token in the kit would be a secret committed to a repository, and
+the kit credential mechanism cannot help: it injects secrets into HTTP headers,
+which does nothing for a raw TCP protocol. A bare `--env SBX_DEV_TOKEN` takes
+the value from your shell instead.
+
+The kit allows exactly one host port, `localhost:7391`, so the sandbox can reach
+the server and nothing else on your host — not even another port on the same
+host. Read that as tidiness rather than containment: the one port it does reach
+is the host's `sbx` CLI, and the policy the kit installs is itself something the
+sandbox can rewrite through that port. `--allow-command` on the server is what
+constrains this; the allow list is not.
+
+Running the server elsewhere means changing both `SBX_DEV_ADDR` and the
+`permissions.network.allow` entry in the kit, because a rule naming one port
+does not match another.
+
+Because the kit pins the client release it installs, its `version` tracks the
+client version rather than moving independently.
+
+### By hand
+
 Allow the port in the sandbox network policy. The rule must name `localhost`,
 not `host.docker.internal`, because the proxy rewrites the request host before
 evaluating policy while rules are matched verbatim:
@@ -90,8 +141,8 @@ sbx policy allow network localhost:7391
 ```
 
 Get the client into the sandbox. Either run the installer inside it, which needs
-`raw.githubusercontent.com` and `objects.githubusercontent.com` allowed in the
-sandbox's policy:
+`raw.githubusercontent.com`, `github.com` and
+`release-assets.githubusercontent.com` allowed in the sandbox's policy:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/cdupuis/sbx-dev/main/install.sh | sh -s -- --client
@@ -141,17 +192,23 @@ flag, because every argument belongs to the remote CLI.
 
 ## Security
 
-Anyone holding the token can run any `sbx` command on the host, and `sbx exec`
-alone is equivalent to arbitrary code execution there. The token is the only
-boundary, so treat it like an SSH key: it lives in a `0600` file, and the server
-compares it in constant time.
+The token is the entire boundary. Anyone holding it can do everything in the
+warning at the top of this file, so treat it like an SSH key: it lives in a
+`0600` file, and the server compares it in constant time. Loopback binding
+limits *who* can present a token, not what a token permits.
 
-Narrow the blast radius with `--allow-command`, which restricts sessions to
-named subcommands:
+`--allow-command` is the one control that reduces what a token permits, by
+restricting sessions to named subcommands and rejecting everything else:
 
 ```bash
 sbx-dev --allow-command ls,ps,logs
 ```
+
+Choose that list as if the caller were hostile. It narrows the blast radius
+rather than removing it: `ls` still discloses every sandbox name and host
+workspace path, and `logs` still discloses whatever the agents there have
+printed. The escapes above need `create`, `exec` and `policy`, so a list that
+omits all three is the difference between reconnaissance and host access.
 
 ## Protocol
 
@@ -170,6 +227,14 @@ one archive per binary plus `checksums.txt` to a GitHub release:
 
 ```bash
 git tag -a v0.1.0 -m v0.1.0 && git push origin v0.1.0
+```
+
+The kit installs a pinned release, so bump `kit/sbx-dev/spec.yaml` to the version
+you are about to tag before tagging it. `task kit:validate` fails when the kit's
+declared version and the release it installs disagree:
+
+```bash
+task kit:validate
 ```
 
 Check the configuration and rehearse a build without publishing anything:
