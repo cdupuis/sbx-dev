@@ -75,7 +75,7 @@ Grant the sandbox first, then create it under that name:
 ```bash
 sbx-warden grant my-sandbox
 sbx create shell . --name my-sandbox \
-  --kit 'git+https://github.com/cdupuis/sbx-warden.git#ref=v0.5.0&dir=kit/sbx-warden'
+  --kit 'git+https://github.com/cdupuis/sbx-warden.git#ref=v0.6.0&dir=kit/sbx-warden'
 ```
 
 Granting is what lets the server recognise the sandbox, and it is the only way
@@ -198,7 +198,7 @@ pass:
 
 ```bash
 sbx-warden grant my-sandbox
-sbx kit add my-sandbox 'git+https://github.com/cdupuis/sbx-warden.git#ref=v0.5.0&dir=kit/sbx-warden'
+sbx kit add my-sandbox 'git+https://github.com/cdupuis/sbx-warden.git#ref=v0.6.0&dir=kit/sbx-warden'
 ```
 
 Granting on its own has no effect until the sandbox is recreated, because a
@@ -425,7 +425,9 @@ Every binding that matches applies, so **order does not matter** and a baseline
 bound to `*` cannot be skipped by an entry below it. Cedar decides the rest:
 permits accumulate, and a forbid in any matching file beats all of them. That is
 what makes `baseline.cedar` a guardrail rather than a default — no role file can
-restore what it forbids.
+restore what it forbids, so the only way past a guardrail is an exemption written
+into the guardrail itself. `baseline.cedar` carries exactly one, for the `root`
+group.
 
 A sandbox that matches no binding is granted nothing, and is told exactly that,
 so a missing binding does not read as a rule that refused. A policy that should
@@ -433,7 +435,7 @@ reach every sandbox is bound to `*`; there is no separate way to say "everyone".
 
 ### The shipped policies
 
-`policies/` holds four files meant to be composed, not used alone:
+`policies/` holds five files meant to be composed, not used alone:
 
 | File                 | Grants                                                                     |
 | -------------------- | -------------------------------------------------------------------------- |
@@ -441,6 +443,7 @@ reach every sandbox is bound to `*`; there is no separate way to say "everyone".
 | `readonly.cedar`     | Commands that only report state.                                           |
 | `worker.cedar`       | Running commands in *itself* and copying files under the working directory. |
 | `orchestrator.cedar` | Creating, destroying, changing and running in sandboxes, confined to the working directory. |
+| `root.cedar`         | Reading outright, and anything else an operator confirms at the prompt. Not bound by default; see below. |
 
 Two conditions carry most of the confinement. `context.targetsSelf` holds only
 when every sandbox a command names is the caller, so a worker cannot reach a
@@ -449,6 +452,43 @@ holds only when every host path lies under the directory `sbx-warden` runs in, w
 is what keeps `sbx create` from mounting, and `sbx cp` from reading, the rest of
 the filesystem. Both are computed from the parse the server already performed, so
 neither can be talked around with `..` or a relative path.
+
+### Root
+
+`root.cedar` refuses nothing. Every command is reachable, on the host and on any
+sandbox, with any flag — including the credential store, the daemon, publishing
+and `--privileged`. What bounds it is not a shorter list of commands but a person:
+only reading is granted outright, and everything else is withheld until an
+operator confirms it at the terminal `sbx-warden` runs on. A sandbox holding this
+can ask for anything and take nothing.
+
+The broad rule names no action at all, which is the only form that means
+*everything*: capability groups are a closed set, some commands belong to none of
+them, and a command sbx gains later may belong to none either. So a command
+nobody anticipated is confirmed rather than assumed harmless.
+
+It ships **unbound**. Enable it in a map you control:
+
+```yaml
+- sandboxes: my-admin-box
+  policies: root.cedar
+  groups: root
+```
+
+Both the policy and the group are required, and that is the safety property.
+`root.cedar` is written against `SBX::Group::"root"`, so it grants nothing without
+the group, and the group is the one word to grep for when auditing who is
+unlimited. The group is also the half that matters: it is what `baseline.cedar`
+exempts, so giving it to a sandbox lifts the guardrails for that sandbox even
+without the policy.
+
+Because everything but reading needs an answer, a root sandbox is only as capable
+as the server is attended. On a server with no terminal it can read and nothing
+else.
+
+The default map leaves the binding commented out rather than shipping it live,
+because that map is what a server fetches when given no `--policy-map`. A sandbox
+should not acquire the host by being named `root`.
 
 ### Writing rules
 
@@ -488,8 +528,35 @@ permit (
 );
 ```
 
-An approved-but-unconfirmed request is reported as needing approval and is not
-run, so `@requireApproval` withholds a permit rather than granting it quietly.
+`@requireApproval` withholds a permit rather than granting it quietly. The server
+prints the request on the terminal it was started from and waits:
+
+```
+worker-1 asks to run sbx policy allow network
+  SANDBOX: worker-1
+  HOST:PORT: example.com:443
+allow it? [y/N]
+```
+
+Only `y` or `yes` allows it. Everything else refuses, including an empty line, an
+answer that does not arrive within two minutes, and a caller that gives up first.
+The sandbox is told it is waiting, since a prompt on the host is otherwise
+indistinguishable from a server that stopped responding.
+
+A server with no terminal — under systemd, or with its input redirected — cannot
+ask, so it refuses and says so rather than deciding on an absent operator's
+behalf. Keep `sbx-warden` in the foreground if a policy withholds anything.
+
+One annotated permit is enough to withhold a request, even when an unannotated
+rule also permits it: a rule marked for confirmation is not waved through by a
+more generous one elsewhere. A rule that should stay instant therefore has to be
+excluded from the annotated one, which is why `root.cedar` writes its broad permit
+as `unless { action in SBX::Action::"read" }`.
+
+Values in a prompt come from the caller, so they are stripped of anything
+unprintable before being shown. Otherwise an escape sequence in a sandbox name or
+path could clear the question and leave a friendlier one for the operator to
+agree to.
 
 ### The vocabulary
 

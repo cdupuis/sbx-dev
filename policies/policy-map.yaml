@@ -29,3 +29,16 @@ bindings:
   - sandboxes: orchestrator
     policies: orchestrator.cedar
     groups: orchestrators
+
+  # Unlimited access, for a sandbox trusted with the host itself. It is left
+  # commented out because this map is the default a server fetches when none is
+  # given, and being named "root" should not be what confers the host. Enable it
+  # for a name you chose, in a map you control.
+  #
+  # Both lines matter and neither is enough alone: root.cedar grants nothing
+  # without the group, and the group on its own lifts the guardrails in
+  # baseline.cedar for whatever sandbox holds it.
+  #
+  # - sandboxes: root
+  #   policies: root.cedar
+  #   groups: root

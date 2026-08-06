@@ -41,29 +41,32 @@ func TestShippedPoliciesValidateAgainstTheCommittedSchema(t *testing.T) {
 	// and this is what proves it: every rule the repository ships type-checks
 	// against it, so a policy naming an action or attribute that does not exist
 	// fails here rather than silently never matching at runtime.
+	//
+	// Every file in the directory is checked rather than every file the map
+	// binds, because a policy the map offers without enabling is still shipped
+	// for someone to bind, and an unbound one would otherwise go unchecked.
 	validator := validate.New(resolvedSchema(t), validate.WithStrict())
 
-	bindings, err := LoadPolicyMap(shippedMapPath())
+	files, err := filepath.Glob(filepath.Join("..", "..", "policies", "*.cedar"))
 	require.NoError(t, err)
+	require.NotEmpty(t, files, "no shipped policy was found")
 
 	checked := 0
-	for _, binding := range bindings {
-		for _, file := range binding.Policies {
-			source, err := os.ReadFile(file)
-			require.NoError(t, err)
+	for _, file := range files {
+		source, err := os.ReadFile(file)
+		require.NoError(t, err)
 
-			set, err := cedar.NewPolicySetFromBytes(file, source)
-			require.NoError(t, err)
+		set, err := cedar.NewPolicySetFromBytes(file, source)
+		require.NoError(t, err)
 
-			name := filepath.Base(file)
-			for id, policy := range set.All() {
-				// cedar.Policy exposes the public ast.Policy, which is defined as
-				// the experimental one the validator takes.
-				tree := (*expast.Policy)(policy.AST())
-				require.NoError(t, validator.Policy(name+"#"+string(id), tree),
-					"%s#%s does not validate against %s", name, id, SchemaFile)
-				checked++
-			}
+		name := filepath.Base(file)
+		for id, policy := range set.All() {
+			// cedar.Policy exposes the public ast.Policy, which is defined as
+			// the experimental one the validator takes.
+			tree := (*expast.Policy)(policy.AST())
+			require.NoError(t, validator.Policy(name+"#"+string(id), tree),
+				"%s#%s does not validate against %s", name, id, SchemaFile)
+			checked++
 		}
 	}
 	require.NotZero(t, checked, "no shipped policy was checked")

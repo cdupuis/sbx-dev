@@ -37,7 +37,7 @@ setup:
       # arrives would exit 0 and leave the sandbox without a client.
       command: |
         set -eu
-        version=v0.5.0
+        version=v0.6.0
         installer="$(mktemp)"
         trap 'rm -f "$installer"' EXIT
         curl -fsSL --retry 3 -o "$installer" \

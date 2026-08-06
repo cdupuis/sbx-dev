@@ -1,6 +1,7 @@
 package authz
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -65,8 +66,9 @@ func TestShippedMapGivesEverySandboxReadOnlyAccess(t *testing.T) {
 }
 
 func TestShippedBaselineForbidsWhatNoRoleRestores(t *testing.T) {
-	// The orchestrator is the most capable shipped role; if the guardrails hold
-	// for it they hold for everyone.
+	// The orchestrator is the most capable role this map binds; if the guardrails
+	// hold for it they hold for every sandbox the map describes. The root group,
+	// which the guardrails exempt, is deliberately bound to nothing here.
 	deny(t, "orchestrator", "secret", "ls")
 	deny(t, "orchestrator", "secret", "rm", "github")
 	deny(t, "orchestrator", "login")
@@ -134,4 +136,99 @@ func TestGroupsComeFromTheMatchingBindings(t *testing.T) {
 	require.Equal(t, []string{"workers"}, a.groupsFor("worker-1"))
 	require.Equal(t, []string{"orchestrators"}, a.groupsFor("orchestrator"))
 	require.Empty(t, a.groupsFor("unnamed-thing"))
+}
+
+// withRoot binds the shipped policies the way the map's commented-out root entry
+// does. The shipped map leaves root unbound, so the role has to be assembled here
+// to be tested at all.
+func withRoot(t *testing.T) *Authorizer {
+	t.Helper()
+
+	dir, err := filepath.Abs(filepath.Join("..", "..", "policies"))
+	require.NoError(t, err)
+	at := func(name string) string { return filepath.Join(dir, name) }
+
+	mapPath := filepath.Join(t.TempDir(), "policy-map.yaml")
+	source := "bindings:\n" +
+		"  - sandboxes: \"*\"\n" +
+		"    policies: [" + at("baseline.cedar") + ", " + at("readonly.cedar") + "]\n" +
+		"  - sandboxes: root\n" +
+		"    policies: " + at("root.cedar") + "\n" +
+		"    groups: root\n"
+	require.NoError(t, os.WriteFile(mapPath, []byte(source), 0o600))
+
+	a, err := NewFromPolicyMap(mapPath)
+	require.NoError(t, err)
+	return a
+}
+
+func askAsRoot(t *testing.T, argv ...string) Decision {
+	t.Helper()
+
+	cat, err := catalog.Embedded()
+	require.NoError(t, err)
+	inv, err := resolve.Argv(cat, argv)
+	require.NoError(t, err, "argv must resolve before it can be authorized")
+
+	return withRoot(t).Authorize(Request{
+		Caller:     identity.Identity{Sandbox: "root", Generation: 1},
+		Invocation: inv,
+		Workdir:    "/work",
+	})
+}
+
+func TestShippedRootReadsWithoutAsking(t *testing.T) {
+	for _, argv := range [][]string{
+		{"ls"},
+		{"version"},
+		{"policy", "ls"},
+		{"daemon", "status"},
+		{"kit", "inspect", "example.com/kit:1"},
+	} {
+		d := askAsRoot(t, argv...)
+		require.True(t, d.Allowed, "expected root to be allowed %v: %+v", argv, d)
+		require.False(t, d.NeedsApproval, "reading must not need approval: %v", argv)
+		require.Empty(t, d.Errors)
+	}
+}
+
+func TestShippedRootWithholdsEverythingElseForApproval(t *testing.T) {
+	// Spot-checks across every capability group, including the four the baseline
+	// forbids and the confinement the roles impose, plus a command belonging to no
+	// group at all, which only an unconstrained action reaches.
+	//
+	// None of these is refused and none is granted: each is withheld, which is the
+	// whole shape of this role.
+	for _, argv := range [][]string{
+		{"secret", "ls"},
+		{"secret", "rm", "github"},
+		{"login"},
+		{"daemon", "stop"},
+		{"kit", "push", "/work/kit", "example.com/kit:1"},
+		{"policy", "allow", "network", "--sandbox", "worker-1", "example.com:443"},
+		{"create", "shell", "/etc"},
+		{"cp", "worker-1:/etc/hostname", "/etc/passwd"},
+		{"exec", "worker-1", "sh"},
+		{"exec", "--privileged", "worker-1", "sh"},
+		{"rm", "worker-1"},
+		{"completion", "bash"},
+	} {
+		d := askAsRoot(t, argv...)
+		require.True(t, d.NeedsApproval, "expected %v to need approval: %+v", argv, d)
+		require.False(t, d.Allowed, "a withheld command has not been approved: %v", argv)
+		require.Empty(t, d.Errors)
+	}
+}
+
+func TestShippedMapDoesNotMakeTheNameRootPrivileged(t *testing.T) {
+	// root.cedar ships unbound, so a sandbox called "root" must get the read-only
+	// floor and nothing else. Otherwise the default map would turn a name into an
+	// escalation.
+	require.Empty(t, shipped(t).groupsFor("root"))
+
+	allow(t, "root", "ls")
+	deny(t, "root", "secret", "ls")
+	deny(t, "root", "daemon", "stop")
+	deny(t, "root", "exec", "root", "sh")
+	deny(t, "root", "exec", "--privileged", "root", "sh")
 }
