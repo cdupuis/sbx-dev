@@ -1,6 +1,6 @@
 version: 2
 
-project_name: sbx-dev
+project_name: sbx-warden
 
 before:
   hooks:
@@ -9,9 +9,9 @@ before:
 
 builds:
   # The server runs on a developer's host, so it covers the desktop platforms.
-  - id: sbx-dev
-    main: ./cmd/sbx-dev
-    binary: sbx-dev
+  - id: sbx-warden
+    main: ./cmd/sbx-warden
+    binary: sbx-warden
     env:
       - CGO_ENABLED=0
     goos: [linux, darwin, windows]
@@ -40,8 +40,8 @@ builds:
 # asked for.
 archives:
   - id: server
-    ids: [sbx-dev]
-    name_template: "sbx-dev_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    ids: [sbx-warden]
+    name_template: "sbx-warden_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     formats: [tar.gz]
     format_overrides:
       - goos: windows
@@ -80,7 +80,7 @@ changelog:
 release:
   github:
     owner: cdupuis
-    name: sbx-dev
+    name: sbx-warden
   prerelease: auto
   name_template: "{{ .Version }}"
   footer: |
@@ -89,13 +89,13 @@ release:
     Linux or macOS:
 
     ```sh
-    curl -fsSL https://raw.githubusercontent.com/cdupuis/sbx-dev/main/install.sh | sh
+    curl -fsSL https://raw.githubusercontent.com/cdupuis/sbx-warden/main/install.sh | sh
     ```
 
     Windows (PowerShell):
 
     ```powershell
-    irm https://raw.githubusercontent.com/cdupuis/sbx-dev/main/install.ps1 | iex
+    irm https://raw.githubusercontent.com/cdupuis/sbx-warden/main/install.ps1 | iex
     ```
 
     Pass `--server` or `--client` to install just one binary. The server runs on

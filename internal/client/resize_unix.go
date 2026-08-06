@@ -9,7 +9,7 @@ import (
 
 	"golang.org/x/term"
 
-	"github.com/cdupuis/sbx-dev/internal/protocol"
+	"github.com/cdupuis/sbx-warden/internal/protocol"
 )
 
 // watchResize reports terminal size changes to the server until the returned

@@ -15,9 +15,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/cdupuis/sbx-dev/internal/client"
-	"github.com/cdupuis/sbx-dev/internal/identity"
-	"github.com/cdupuis/sbx-dev/internal/protocol"
+	"github.com/cdupuis/sbx-warden/internal/client"
+	"github.com/cdupuis/sbx-warden/internal/identity"
+	"github.com/cdupuis/sbx-warden/internal/protocol"
 )
 
 // testKey signs the tokens these tests present. It is fixed rather than
@@ -264,9 +264,9 @@ func TestSessionAllowsListedSubcommandAfterFlags(t *testing.T) {
 }
 
 func TestSessionForwardsAllowedEnv(t *testing.T) {
-	addr := startServer(t, Config{AllowEnv: []string{"SBX_DEV_TEST_VAR"}})
+	addr := startServer(t, Config{AllowEnv: []string{"SBX_WARDEN_TEST_VAR"}})
 
-	code, stdout := showEnvSession(t, addr, "SBX_DEV_TEST_VAR", "forwarded")
+	code, stdout := showEnvSession(t, addr, "SBX_WARDEN_TEST_VAR", "forwarded")
 	require.Equal(t, 0, code)
 	require.Equal(t, "forwarded\n", stdout)
 }
@@ -276,7 +276,7 @@ func TestSessionDropsEnvItWasNotAllowedToSet(t *testing.T) {
 
 	// printenv exits 1 for a name it cannot find, which is how the child
 	// reports that the variable never reached it.
-	code, stdout := showEnvSession(t, addr, "SBX_DEV_TEST_VAR", "forwarded")
+	code, stdout := showEnvSession(t, addr, "SBX_WARDEN_TEST_VAR", "forwarded")
 	require.Equal(t, 1, code)
 	require.Empty(t, stdout)
 }

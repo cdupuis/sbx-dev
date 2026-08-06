@@ -18,7 +18,7 @@ func TestHandshakeRoundTrip(t *testing.T) {
 
 func TestHandshakeRejectsForeignPeer(t *testing.T) {
 	err := ReadHandshake(strings.NewReader("HTTP/"))
-	require.ErrorIs(t, err, ErrNotSbxDev)
+	require.ErrorIs(t, err, ErrNotSbxWarden)
 }
 
 func TestHandshakeRejectsOtherVersion(t *testing.T) {

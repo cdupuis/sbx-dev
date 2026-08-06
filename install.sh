@@ -1,23 +1,23 @@
 #!/bin/sh
-# Install the sbx-dev server and/or the sbx client from the latest GitHub release.
+# Install the sbx-warden server and/or the sbx client from the latest GitHub release.
 #
-#   curl -fsSL https://raw.githubusercontent.com/cdupuis/sbx-dev/main/install.sh | sh
-#   curl -fsSL https://raw.githubusercontent.com/cdupuis/sbx-dev/main/install.sh | sh -s -- --client
+#   curl -fsSL https://raw.githubusercontent.com/cdupuis/sbx-warden/main/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/cdupuis/sbx-warden/main/install.sh | sh -s -- --client
 #
-# The server (sbx-dev) runs on your host; the client (sbx) belongs inside a
+# The server (sbx-warden) runs on your host; the client (sbx) belongs inside a
 # sandbox. Both are installed by default.
 
 set -eu
 
-REPO="cdupuis/sbx-dev"
+REPO="cdupuis/sbx-warden"
 API="https://api.github.com/repos/${REPO}"
-# SBX_DEV_DOWNLOAD_BASE points the installer at a mirror holding the same
+# SBX_WARDEN_DOWNLOAD_BASE points the installer at a mirror holding the same
 # release layout, for air-gapped installs and for testing this script.
-DOWNLOADS="${SBX_DEV_DOWNLOAD_BASE:-https://github.com/${REPO}/releases/download}"
+DOWNLOADS="${SBX_WARDEN_DOWNLOAD_BASE:-https://github.com/${REPO}/releases/download}"
 
-components="${SBX_DEV_COMPONENTS:-both}"
-requested_version="${SBX_DEV_VERSION:-}"
-install_dir="${SBX_DEV_INSTALL_DIR:-}"
+components="${SBX_WARDEN_COMPONENTS:-both}"
+requested_version="${SBX_WARDEN_VERSION:-}"
+install_dir="${SBX_WARDEN_INSTALL_DIR:-}"
 force=""
 tmpdir=""
 
@@ -41,17 +41,17 @@ Usage: install.sh [options]
 
 Options:
   --client            Install only the sbx client (for use inside a sandbox)
-  --server            Install only the sbx-dev server (for your host)
+  --server            Install only the sbx-warden server (for your host)
   --version VERSION   Install a specific release instead of the latest
   --dir DIRECTORY     Install into DIRECTORY
-  --force             Replace an existing sbx that is not an sbx-dev client
+  --force             Replace an existing sbx that is not an sbx-warden client
   -h, --help          Show this help
 
 Environment:
-  SBX_DEV_COMPONENTS      both (default), client or server
-  SBX_DEV_VERSION         release to install, e.g. v0.1.0
-  SBX_DEV_INSTALL_DIR     installation directory
-  SBX_DEV_DOWNLOAD_BASE   mirror serving the release archives
+  SBX_WARDEN_COMPONENTS      both (default), client or server
+  SBX_WARDEN_VERSION         release to install, e.g. v0.1.0
+  SBX_WARDEN_INSTALL_DIR     installation directory
+  SBX_WARDEN_DOWNLOAD_BASE   mirror serving the release archives
 EOF
 }
 
@@ -167,15 +167,15 @@ resolve_install_dir() {
 	# prompt could never be answered.
 	resolve_install_dir_fallback="${HOME}/.local/bin"
 	mkdir -p "$resolve_install_dir_fallback" ||
-		die "cannot create $resolve_install_dir_fallback; set SBX_DEV_INSTALL_DIR"
+		die "cannot create $resolve_install_dir_fallback; set SBX_WARDEN_INSTALL_DIR"
 	printf '%s\n' "$resolve_install_dir_fallback"
 }
 
-# is_our_client reports whether a path holds an sbx-dev client rather than the
+# is_our_client reports whether a path holds an sbx-warden client rather than the
 # real Docker Sandboxes CLI, so an upgrade can be told apart from a collision.
 is_our_client() {
 	[ -f "$1" ] && [ -x "$1" ] || return 1
-	SBX_DEV_PRINT_VERSION=1 "$1" 2>/dev/null | head -1 | grep -q '^sbx-dev client '
+	SBX_WARDEN_PRINT_VERSION=1 "$1" 2>/dev/null | head -1 | grep -q '^sbx-warden client '
 }
 
 fetch_archive() {
@@ -205,7 +205,7 @@ install_binary() {
 	chmod 0755 "${tmpdir}/${install_binary_name}"
 	# Replace via a temporary name so a running binary is not written in place.
 	cp "${tmpdir}/${install_binary_name}" "${dir}/${install_binary_name}.new" ||
-		die "cannot write to ${dir}; set SBX_DEV_INSTALL_DIR to a writable directory"
+		die "cannot write to ${dir}; set SBX_WARDEN_INSTALL_DIR to a writable directory"
 	mv -f "${dir}/${install_binary_name}.new" "${dir}/${install_binary_name}"
 	info "installed ${dir}/${install_binary_name}"
 }
@@ -218,7 +218,7 @@ dir="$(resolve_install_dir)"
 
 tmpdir="$(mktemp -d)" || die "could not create a temporary directory"
 
-info "sbx-dev ${tag} for ${os}/${arch} into ${dir}"
+info "sbx-warden ${tag} for ${os}/${arch} into ${dir}"
 download "${DOWNLOADS}/${tag}/checksums.txt" "${tmpdir}/checksums.txt" ||
 	die "could not download checksums for ${tag}"
 
@@ -226,8 +226,8 @@ installed_server=""
 installed_client=""
 
 if [ "$components" = "both" ] || [ "$components" = "server" ]; then
-	fetch_archive "sbx-dev_${version}_${os}_${arch}.tar.gz"
-	install_binary "sbx-dev"
+	fetch_archive "sbx-warden_${version}_${os}_${arch}.tar.gz"
+	install_binary "sbx-warden"
 	installed_server="yes"
 fi
 
@@ -237,11 +237,11 @@ if [ "$components" = "both" ] || [ "$components" = "client" ]; then
 
 	if [ -e "$target" ] && ! is_our_client "$target"; then
 		if [ -n "$force" ]; then
-			warn "replacing ${target}, which is not an sbx-dev client"
+			warn "replacing ${target}, which is not an sbx-warden client"
 		elif [ "$components" = "client" ]; then
-			die "${target} exists and is not an sbx-dev client; pass --force to replace it or --dir to install elsewhere"
+			die "${target} exists and is not an sbx-warden client; pass --force to replace it or --dir to install elsewhere"
 		else
-			warn "skipping the client: ${target} exists and is not an sbx-dev client"
+			warn "skipping the client: ${target} exists and is not an sbx-warden client"
 			warn "the client is only needed inside a sandbox; install it there, or pass --force"
 			skip_client="yes"
 		fi
@@ -268,17 +268,17 @@ esac
 info ""
 if [ -n "$installed_server" ]; then
 	info "Start the server on your host:"
-	info "  sbx-dev --addr 127.0.0.1:7391"
+	info "  sbx-warden --addr 127.0.0.1:7391"
 	info ""
 	info "Then grant a sandbox and allow the port for it:"
-	info "  sbx-dev grant SANDBOX"
+	info "  sbx-warden grant SANDBOX"
 	info "  sbx policy allow network localhost:7391 --sandbox SANDBOX"
 fi
 if [ -n "$installed_client" ]; then
 	info ""
 	info "Point the client at the host from inside a sandbox:"
-	info "  export SBX_DEV_ADDR=host.docker.internal:7391"
+	info "  export SBX_WARDEN_ADDR=host.docker.internal:7391"
 	info ""
-	info "SBX_DEV_TOKEN is set by \"sbx-dev grant\" on the host; the sandbox"
+	info "SBX_WARDEN_TOKEN is set by \"sbx-warden grant\" on the host; the sandbox"
 	info "has to be granted before it is created."
 fi

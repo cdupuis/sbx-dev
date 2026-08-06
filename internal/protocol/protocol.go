@@ -1,5 +1,5 @@
 // Package protocol implements the framed TCP wire format spoken between the
-// sbx client and the sbx-dev server.
+// sbx client and the sbx-warden server.
 package protocol
 
 import (
@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	magic   = "SBXD"
+	magic   = "SBXW"
 	version = 1
 
 	// MaxPayload bounds one frame's payload so a corrupt or hostile length
@@ -34,8 +34,8 @@ const (
 var (
 	// ErrVersionMismatch reports a peer speaking an incompatible protocol.
 	ErrVersionMismatch = errors.New("protocol version mismatch")
-	// ErrNotSbxDev reports a peer that is not an sbx-dev endpoint.
-	ErrNotSbxDev = errors.New("not an sbx-dev endpoint")
+	// ErrNotSbxWarden reports a peer that is not an sbx-warden endpoint.
+	ErrNotSbxWarden = errors.New("not an sbx-warden endpoint")
 	// ErrPayloadTooLarge reports a frame whose length prefix exceeds MaxPayload.
 	ErrPayloadTooLarge = errors.New("frame payload too large")
 )
@@ -88,7 +88,7 @@ const (
 	// SessionPath is the route that issues a session ticket.
 	SessionPath = "/v1/session"
 	// TokenHeader carries the caller's token on that request.
-	TokenHeader = "Sbx-Dev-Token"
+	TokenHeader = "Sbx-Warden-Token"
 )
 
 // SessionResponse answers a successful handshake. ExpiresIn is in seconds.
@@ -161,7 +161,7 @@ func ReadHandshake(r io.Reader) error {
 		return fmt.Errorf("read handshake: %w", err)
 	}
 	if string(buf[:len(magic)]) != magic {
-		return ErrNotSbxDev
+		return ErrNotSbxWarden
 	}
 	if buf[len(magic)] != version {
 		return fmt.Errorf("%w: peer speaks %d, want %d", ErrVersionMismatch, buf[len(magic)], version)

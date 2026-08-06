@@ -1,4 +1,4 @@
-module github.com/cdupuis/sbx-dev
+module github.com/cdupuis/sbx-warden
 
 go 1.26.5
 

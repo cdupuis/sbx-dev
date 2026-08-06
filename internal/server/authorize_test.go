@@ -7,8 +7,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/cdupuis/sbx-dev/internal/authz"
-	"github.com/cdupuis/sbx-dev/internal/identity"
+	"github.com/cdupuis/sbx-warden/internal/authz"
+	"github.com/cdupuis/sbx-warden/internal/identity"
 )
 
 // testPolicy lets any sandbox read, and lets only the orchestrator remove one.

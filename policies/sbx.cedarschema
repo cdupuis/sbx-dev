@@ -1,4 +1,4 @@
-// The vocabulary an sbx-dev policy is written against.
+// The vocabulary an sbx-warden policy is written against.
 //
 // Generated from the embedded sbx command catalog. Do not edit: run
 // "task policy:schema" to regenerate it after the catalog changes.
@@ -38,7 +38,7 @@ namespace SBX {
         // every member of a set, so confinement is expressed against this: it
         // lies under a prefix exactly when all the paths do.
         hostPathsRoot: String,
-        // Whether every host path lies under the directory sbx-dev runs in.
+        // Whether every host path lies under the directory sbx-warden runs in.
         // True when the command names no host path. This is the portable form
         // of confinement, for a policy that should not name a site's
         // directory.

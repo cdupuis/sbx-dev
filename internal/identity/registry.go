@@ -23,16 +23,16 @@ type Registry struct {
 }
 
 // DefaultRegistryPath returns the conventional registry location,
-// $SBX_DEV_REGISTRY_FILE when set and ~/.sbx-dev/generations.json otherwise.
+// $SBX_WARDEN_REGISTRY_FILE when set and ~/.sbx-warden/generations.json otherwise.
 func DefaultRegistryPath() (string, error) {
-	if p := os.Getenv("SBX_DEV_REGISTRY_FILE"); p != "" {
+	if p := os.Getenv("SBX_WARDEN_REGISTRY_FILE"); p != "" {
 		return p, nil
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("locate home directory: %w", err)
 	}
-	return filepath.Join(home, ".sbx-dev", "generations.json"), nil
+	return filepath.Join(home, ".sbx-warden", "generations.json"), nil
 }
 
 // OpenRegistry reads the registry at path. A missing file opens an empty

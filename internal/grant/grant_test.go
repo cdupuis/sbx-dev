@@ -11,7 +11,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/cdupuis/sbx-dev/internal/identity"
+	"github.com/cdupuis/sbx-warden/internal/identity"
 )
 
 // fakeSbx writes the arguments it was given and the value it read on stdin to
@@ -53,7 +53,7 @@ func TestRunPrintsTheTokenForDeliveryAtCreation(t *testing.T) {
 	var out bytes.Buffer
 	require.NoError(t, Run(context.Background(), &out, cfg))
 
-	require.Contains(t, out.String(), "--env SBX_DEV_TOKEN=v1.worker-1.1.")
+	require.Contains(t, out.String(), "--env SBX_WARDEN_TOKEN=v1.worker-1.1.")
 	require.NoFileExists(t, argsFile, "printing a token must not touch sbx's secret store")
 }
 
@@ -69,7 +69,7 @@ func TestRunRegistersASandboxScopedSecret(t *testing.T) {
 	// Scoping is the whole point: a global secret would give every sandbox the
 	// same token and erase the identity this grant establishes.
 	require.Equal(t,
-		"secret set-custom --sandbox=worker-1 --host=localhost --env=SBX_DEV_TOKEN --placeholder=sbx-dev-worker-1",
+		"secret set-custom --sandbox=worker-1 --host=localhost --env=SBX_WARDEN_TOKEN --placeholder=sbx-warden-worker-1",
 		readFile(t, argsFile))
 
 	token := readFile(t, stdinFile)

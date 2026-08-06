@@ -8,7 +8,7 @@
 // Two conditions carry the whole rule. targetsSelf holds only when the sandbox
 // the command names is the caller, which is what keeps a worker out of its
 // siblings. hostPathsUnderWorkdir holds only when every host path the command
-// named lies under the directory sbx-dev runs in, which is what stops "sbx cp"
+// named lies under the directory sbx-warden runs in, which is what stops "sbx cp"
 // from reaching the rest of the filesystem. Both are computed from the parse the
 // server already performed, so neither can be talked around with ".." or a
 // relative path.

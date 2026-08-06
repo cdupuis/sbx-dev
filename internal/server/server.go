@@ -19,10 +19,10 @@ import (
 
 	"github.com/creack/pty"
 
-	"github.com/cdupuis/sbx-dev/internal/authz"
-	"github.com/cdupuis/sbx-dev/internal/catalog"
-	"github.com/cdupuis/sbx-dev/internal/identity"
-	"github.com/cdupuis/sbx-dev/internal/protocol"
+	"github.com/cdupuis/sbx-warden/internal/authz"
+	"github.com/cdupuis/sbx-warden/internal/catalog"
+	"github.com/cdupuis/sbx-warden/internal/identity"
+	"github.com/cdupuis/sbx-warden/internal/protocol"
 )
 
 // defaultHandshakeTimeout bounds how long an unauthenticated connection may
@@ -75,7 +75,7 @@ type Config struct {
 	Logger    *slog.Logger
 }
 
-// Server serves the sbx-dev protocol on a TCP listener.
+// Server serves the sbx-warden protocol on a TCP listener.
 type Server struct {
 	cfg      Config
 	allow    map[string]struct{}

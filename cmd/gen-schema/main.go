@@ -1,5 +1,5 @@
 // Command gen-schema regenerates the Cedar schema documenting the vocabulary an
-// sbx-dev policy is written against.
+// sbx-warden policy is written against.
 //
 // Usage:
 //
@@ -13,8 +13,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/cdupuis/sbx-dev/internal/authz"
-	"github.com/cdupuis/sbx-dev/internal/catalog"
+	"github.com/cdupuis/sbx-warden/internal/authz"
+	"github.com/cdupuis/sbx-warden/internal/catalog"
 )
 
 func main() {

@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/cdupuis/sbx-dev/internal/catalog"
+	"github.com/cdupuis/sbx-warden/internal/catalog"
 )
 
 // Resolution is tested against the committed catalog rather than a fixture,

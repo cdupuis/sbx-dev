@@ -1,7 +1,8 @@
-# sbx-dev
+# sbx-warden
 
-Exposes the host's [`sbx`](https://github.com/docker/sandboxes) CLI over TCP so
-an agent inside a sandbox can drive Docker Sandboxes on the host.
+Lets an agent inside a sandbox drive Docker Sandboxes on the host through the
+host's own [`sbx`](https://github.com/docker/sandboxes) CLI, and decides per
+sandbox what it may ask for.
 
 > [!WARNING]
 > **This dismantles the boundary a sandbox exists to enforce.** A sandbox
@@ -28,10 +29,10 @@ an agent inside a sandbox can drive Docker Sandboxes on the host.
 
 Two binaries:
 
-| Binary    | Runs on           | Role                                                          |
-| --------- | ----------------- | ------------------------------------------------------------- |
-| `sbx-dev` | the host          | Listens on loopback and executes the real `sbx` per request.  |
-| `sbx`     | inside a sandbox  | Forwards its arguments to `sbx-dev` and relays stdio.         |
+| Binary       | Runs on          | Role                                                                    |
+| ------------ | ---------------- | ----------------------------------------------------------------------- |
+| `sbx-warden` | the host         | Identifies the caller, authorizes the command, runs the real `sbx`.     |
+| `sbx`        | inside a sandbox | Forwards its arguments to `sbx-warden` and relays stdio.                |
 
 Every argument is passed through untouched, so all `sbx` commands, flags and
 help text work as if the CLI were installed locally. Interactive commands work
@@ -49,14 +50,14 @@ that does not exist yet, so the kit installs it as each sandbox is created.
 On Linux or macOS:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/cdupuis/sbx-dev/main/install.sh | sh -s -- --server
+curl -fsSL https://raw.githubusercontent.com/cdupuis/sbx-warden/main/install.sh | sh -s -- --server
 ```
 
 On Windows, in PowerShell:
 
 ```powershell
-$env:SBX_DEV_COMPONENTS = 'server'
-irm https://raw.githubusercontent.com/cdupuis/sbx-dev/main/install.ps1 | iex
+$env:SBX_WARDEN_COMPONENTS = 'server'
+irm https://raw.githubusercontent.com/cdupuis/sbx-warden/main/install.ps1 | iex
 ```
 
 Then [run it](#run-the-server-on-the-host). Dropping `--server` installs both
@@ -72,9 +73,9 @@ the sandbox afterwards, and nothing to clone to get it.
 Grant the sandbox first, then create it under that name:
 
 ```bash
-sbx-dev grant my-sandbox
+sbx-warden grant my-sandbox
 sbx create shell . --name my-sandbox \
-  --kit 'git+https://github.com/cdupuis/sbx-dev.git#ref=v0.4.0&dir=kit/sbx-dev'
+  --kit 'git+https://github.com/cdupuis/sbx-warden.git#ref=v0.5.0&dir=kit/sbx-warden'
 ```
 
 Granting is what lets the server recognise the sandbox, and it is the only way
@@ -106,7 +107,7 @@ route.
 
 Both installers download the latest GitHub release, verify it against the
 published `checksums.txt`, and install into `/usr/local/bin` when it is writable
-or `~/.local/bin` otherwise (`%LOCALAPPDATA%\sbx-dev\bin` on Windows). They never
+or `~/.local/bin` otherwise (`%LOCALAPPDATA%\sbx-warden\bin` on Windows). They never
 invoke `sudo`, since a piped script has no terminal to prompt on.
 
 Because the client is called `sbx`, installing it where a real Docker Sandboxes
@@ -115,11 +116,11 @@ client rather than break your `sbx`; use `--force` or `--dir` if you meant it.
 
 | Option                  | Environment variable    | Purpose                          |
 | ----------------------- | ----------------------- | -------------------------------- |
-| `--client` / `--server` | `SBX_DEV_COMPONENTS`    | Which binaries to install.       |
-| `--version VERSION`     | `SBX_DEV_VERSION`       | Install a specific release.      |
-| `--dir DIRECTORY`       | `SBX_DEV_INSTALL_DIR`   | Where to install.                |
+| `--client` / `--server` | `SBX_WARDEN_COMPONENTS`    | Which binaries to install.       |
+| `--version VERSION`     | `SBX_WARDEN_VERSION`       | Install a specific release.      |
+| `--dir DIRECTORY`       | `SBX_WARDEN_INSTALL_DIR`   | Where to install.                |
 | `--force`               | —                       | Replace a foreign `sbx`.         |
-| —                       | `SBX_DEV_DOWNLOAD_BASE` | Mirror serving release archives. |
+| —                       | `SBX_WARDEN_DOWNLOAD_BASE` | Mirror serving release archives. |
 
 Piping to `iex` cannot pass parameters, so the Windows installer reads the
 environment variables above.
@@ -127,18 +128,18 @@ environment variables above.
 ## Build from source
 
 ```bash
-task build                 # ./bin/sbx-dev and ./bin/sbx for this host
+task build                 # ./bin/sbx-warden and ./bin/sbx for this host
 task build:client:all      # linux/amd64 and linux/arm64 clients for sandboxes
 ```
 
 ## Run the server on the host
 
 ```bash
-sbx-dev --addr 127.0.0.1:7391
+sbx-warden --addr 127.0.0.1:7391
 ```
 
 On first start it generates the key that signs identity tokens at
-`~/.sbx-dev/identity.key` and prints how to let a sandbox in. `sbx-dev grant`
+`~/.sbx-warden/identity.key` and prints how to let a sandbox in. `sbx-warden grant`
 reads the same file, so the two work in either order.
 
 It also fetches its [default policy](#the-default) from GitHub, and will not start
@@ -157,13 +158,13 @@ publish your `sbx` CLI to the LAN and buys nothing.
 
 The [install section](#the-client-in-a-sandbox) has the command. The kit is a v2
 mixin, so it composes with any agent rather than replacing one: it installs the
-pinned client release into `/usr/local/bin`, exports `SBX_DEV_ADDR`, and allows
+pinned client release into `/usr/local/bin`, exports `SBX_WARDEN_ADDR`, and allows
 the egress those need. It carries no credential, and cannot: kit environment
 values are literal, so a token in the kit would be a secret committed to a
 repository, and a token names one sandbox while a kit is used by many.
 
-`sbx-dev grant` supplies the credential instead. It registers the token as a
-sandbox-scoped secret, which sets `SBX_DEV_TOKEN` inside the sandbox to a
+`sbx-warden grant` supplies the credential instead. It registers the token as a
+sandbox-scoped secret, which sets `SBX_WARDEN_TOKEN` inside the sandbox to a
 placeholder that the egress proxy substitutes, so the token reaches the server
 without ever being readable in the sandbox.
 
@@ -174,7 +175,7 @@ is the host's `sbx` CLI, and the network policy the kit installs is itself
 something the sandbox could rewrite through that port. What actually constrains
 this is the server's [policy](#policy) and `--allow-command`, not the allow list.
 
-Running the server elsewhere means changing both `SBX_DEV_ADDR` and the
+Running the server elsewhere means changing both `SBX_WARDEN_ADDR` and the
 `permissions.network.allow` entry in the kit, because a rule naming one port
 does not match another.
 
@@ -185,7 +186,7 @@ The `#ref=` in the reference pins the kit the same way, so a sandbox created fro
 it months from now still gets this kit installing this client. Point it at
 `#ref=main` to follow the branch instead, or at a commit SHA for a reference that
 cannot move at all — a tag can be repointed, a SHA cannot. A checkout of this
-repository can also name the kit by path, as `./kit/sbx-dev`, which is what
+repository can also name the kit by path, as `./kit/sbx-warden`, which is what
 `task kit:validate` does while you are changing the kit itself.
 
 ### Adding it to a sandbox that already exists
@@ -196,8 +197,8 @@ Recreating is also when a sandbox picks up its token, so grant it in the same
 pass:
 
 ```bash
-sbx-dev grant my-sandbox
-sbx kit add my-sandbox 'git+https://github.com/cdupuis/sbx-dev.git#ref=v0.4.0&dir=kit/sbx-dev'
+sbx-warden grant my-sandbox
+sbx kit add my-sandbox 'git+https://github.com/cdupuis/sbx-warden.git#ref=v0.5.0&dir=kit/sbx-warden'
 ```
 
 Granting on its own has no effect until the sandbox is recreated, because a
@@ -224,7 +225,7 @@ Get the client into the sandbox. Either run the installer inside it, which needs
 `release-assets.githubusercontent.com` allowed in the sandbox's policy:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/cdupuis/sbx-dev/main/install.sh | sh -s -- --client
+curl -fsSL https://raw.githubusercontent.com/cdupuis/sbx-warden/main/install.sh | sh -s -- --client
 ```
 
 That lands in `~/.local/bin`, which is writable and already first on `PATH` in
@@ -242,14 +243,14 @@ prints one instead of registering it as a secret, which is the by-hand
 equivalent:
 
 ```bash
-sbx-dev grant --print-token my-sandbox      # on the host
+sbx-warden grant --print-token my-sandbox      # on the host
 ```
 
 Then, inside the sandbox:
 
 ```bash
-export SBX_DEV_ADDR=host.docker.internal:7391
-export SBX_DEV_TOKEN=<token printed by sbx-dev grant>
+export SBX_WARDEN_ADDR=host.docker.internal:7391
+export SBX_WARDEN_TOKEN=<token printed by sbx-warden grant>
 sbx ls
 ```
 
@@ -264,33 +265,33 @@ It reads:
 
 | Variable                | Default                     | Purpose                                       |
 | ----------------------- | --------------------------- | --------------------------------------------- |
-| `SBX_DEV_ADDR`          | `host.docker.internal:7391` | Server address.                               |
-| `SBX_DEV_TOKEN`         | —                           | Identity token, set by `sbx-dev grant`.       |
-| `SBX_DEV_FORWARD_ENV`   | —                           | Comma-separated env var names to send along.  |
-| `SBX_DEV_NO_TTY`        | —                           | Set to any value to suppress PTY allocation.  |
-| `SBX_DEV_PRINT_VERSION` | —                           | Print the client's version and exit.          |
+| `SBX_WARDEN_ADDR`          | `host.docker.internal:7391` | Server address.                               |
+| `SBX_WARDEN_TOKEN`         | —                           | Identity token, set by `sbx-warden grant`.       |
+| `SBX_WARDEN_FORWARD_ENV`   | —                           | Comma-separated env var names to send along.  |
+| `SBX_WARDEN_NO_TTY`        | —                           | Set to any value to suppress PTY allocation.  |
+| `SBX_WARDEN_PRINT_VERSION` | —                           | Print the client's version and exit.          |
 
-`SBX_DEV_TOKEN` is required and usually holds a placeholder rather than the token
+`SBX_WARDEN_TOKEN` is required and usually holds a placeholder rather than the token
 itself; see [Policy](#policy).
 
 Environment variables are not forwarded by default; name them explicitly in
-`SBX_DEV_FORWARD_ENV` when a command needs them. The child process otherwise
+`SBX_WARDEN_FORWARD_ENV` when a command needs them. The child process otherwise
 inherits the server's environment.
 
 Server flags: `--addr`, `--sbx`, `--workdir`, `--allow-command`, `--allow-env`,
 `--allow-any-bind`, `--verbose`, `--version`, `--policy-map` and `--key-file`.
-Run `sbx-dev --help` for details.
+Run `sbx-warden --help` for details.
 
-The client reports its own version through `SBX_DEV_PRINT_VERSION` rather than a
+The client reports its own version through `SBX_WARDEN_PRINT_VERSION` rather than a
 flag, because every argument belongs to the remote CLI.
 
 ## Security
 
 Access is granted one sandbox at a time. There is no shared secret: every session
 authenticates with a token naming a single sandbox, so nothing you hand out is
-usable by anything you did not name, and `sbx-dev grant` is the only way in.
+usable by anything you did not name, and `sbx-warden grant` is the only way in.
 
-The signing key is what that rests on. Whoever holds `~/.sbx-dev/identity.key`
+The signing key is what that rests on. Whoever holds `~/.sbx-warden/identity.key`
 can mint a token for any name, so treat it like an SSH key; it is written `0600`
 in a `0700` directory. Loopback binding limits *who* can present a token, not
 what a token permits.
@@ -302,7 +303,7 @@ questions.
 calling:
 
 ```bash
-sbx-dev --allow-command ls,ps,logs
+sbx-warden --allow-command ls,ps,logs
 ```
 
 Choose that list as if the caller were hostile. It narrows the blast radius
@@ -323,8 +324,8 @@ this command*, and the server asks them in that order.
 Every sandbox needs a grant regardless:
 
 ```bash
-sbx-dev grant orchestrator
-sbx-dev grant worker-1
+sbx-warden grant orchestrator
+sbx-warden grant worker-1
 ```
 
 Each token is an HMAC over the sandbox's name, so it cannot be forged or
@@ -340,7 +341,7 @@ A server started with no `--policy-map` authorizes against the map in
 built from:
 
 ```
-https://raw.githubusercontent.com/cdupuis/sbx-dev/main/policies/policy-map.yaml
+https://raw.githubusercontent.com/cdupuis/sbx-warden/main/policies/policy-map.yaml
 ```
 
 The repository comes from the Go module path, so a fork defaults to the policies
@@ -358,8 +359,8 @@ Three consequences worth knowing:
   to an unrestricted server:
 
 ```bash
-sbx-dev --policy-map=""                        # no policy at all
-sbx-dev --policy-map policies/policy-map.yaml  # a local copy, no fetch
+sbx-warden --policy-map=""                        # no policy at all
+sbx-warden --policy-map policies/policy-map.yaml  # a local copy, no fetch
 ```
 
 ### The two layers
@@ -396,7 +397,7 @@ how several hosts enforce one set of rules instead of each keeping a copy that
 drifts:
 
 ```bash
-sbx-dev --policy-map https://config.example.com/sbx/policy-map.yaml
+sbx-warden --policy-map https://config.example.com/sbx/policy-map.yaml
 ```
 
 Resolution works the same way, one level up: a policy named `worker.cedar` in
@@ -444,7 +445,7 @@ reach every sandbox is bound to `*`; there is no separate way to say "everyone".
 Two conditions carry most of the confinement. `context.targetsSelf` holds only
 when every sandbox a command names is the caller, so a worker cannot reach a
 sibling — not even by naming itself alongside one. `context.hostPathsUnderWorkdir`
-holds only when every host path lies under the directory `sbx-dev` runs in, which
+holds only when every host path lies under the directory `sbx-warden` runs in, which
 is what keeps `sbx create` from mounting, and `sbx cp` from reading, the rest of
 the filesystem. Both are computed from the parse the server already performed, so
 neither can be talked around with `..` or a relative path.
@@ -519,7 +520,7 @@ A session is two connections to the same port, and the server tells them apart
 by their opening bytes.
 
 The first is an HTTP `POST /v1/session` carrying the caller's token in an
-`Sbx-Dev-Token` header, answered with a single-use ticket that expires in 30
+`Sbx-Warden-Token` header, answered with a single-use ticket that expires in 30
 seconds. The credential travels as an HTTP header because that is the only place
 a sandbox's egress proxy can substitute a secret, which is what lets the sandbox
 hold a placeholder and never the token itself.
@@ -547,7 +548,7 @@ git tag -a v0.1.0 -m v0.1.0 && git push origin v0.1.0
 ```
 
 Three things carry the version and have to move together before you tag: the
-`version` and the installed release in `kit/sbx-dev/spec.yaml`, and the `#ref=`
+`version` and the installed release in `kit/sbx-warden/spec.yaml`, and the `#ref=`
 in this file's kit references. `task kit:validate` fails when they disagree:
 
 ```bash

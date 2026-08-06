@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/cdupuis/sbx-dev/internal/identity"
+	"github.com/cdupuis/sbx-warden/internal/identity"
 )
 
 func testCaller(sandbox string) caller {

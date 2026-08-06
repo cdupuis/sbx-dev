@@ -23,8 +23,8 @@ import (
 	"github.com/cedar-policy/cedar-go"
 	"github.com/cedar-policy/cedar-go/types"
 
-	"github.com/cdupuis/sbx-dev/internal/identity"
-	"github.com/cdupuis/sbx-dev/internal/resolve"
+	"github.com/cdupuis/sbx-warden/internal/identity"
+	"github.com/cdupuis/sbx-warden/internal/resolve"
 )
 
 // Entity types. Keeping them in one place keeps a policy's spelling and this

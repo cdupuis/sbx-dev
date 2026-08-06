@@ -4,9 +4,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/cdupuis/sbx-dev/internal/authz"
-	"github.com/cdupuis/sbx-dev/internal/identity"
-	"github.com/cdupuis/sbx-dev/internal/resolve"
+	"github.com/cdupuis/sbx-warden/internal/authz"
+	"github.com/cdupuis/sbx-warden/internal/identity"
+	"github.com/cdupuis/sbx-warden/internal/resolve"
 )
 
 // caller is the sandbox a connection turned out to belong to.

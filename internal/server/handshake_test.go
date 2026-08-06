@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/cdupuis/sbx-dev/internal/protocol"
+	"github.com/cdupuis/sbx-warden/internal/protocol"
 )
 
 // handshake performs the HTTP exchange a client makes before opening a session.

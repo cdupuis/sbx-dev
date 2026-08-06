@@ -37,7 +37,7 @@ func TestGitHubRawDeclinesWhatItCannotName(t *testing.T) {
 // install fetching a 404.
 func TestDefaultPolicyMapNamesTheShippedMap(t *testing.T) {
 	require.Equal(t,
-		"https://raw.githubusercontent.com/cdupuis/sbx-dev/main/"+shippedPolicyMap,
+		"https://raw.githubusercontent.com/cdupuis/sbx-warden/main/"+shippedPolicyMap,
 		defaultPolicyMap())
 
 	require.FileExists(t, filepath.Join("..", "..", shippedPolicyMap))

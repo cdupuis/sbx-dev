@@ -1,15 +1,15 @@
 schemaVersion: "2"
 kind: mixin
-name: sbx-dev
-version: "0.4.0"
-displayName: sbx-dev client
+name: sbx-warden
+version: "0.5.0"
+displayName: sbx-warden client
 description: |
-  Installs the sbx-dev client, which forwards sbx commands to the sbx-dev
+  Installs the sbx-warden client, which forwards sbx commands to the sbx-warden
   server on the host over TCP. This grants the sandbox the host's Docker
   Sandboxes control plane, which is enough to read and write host files and to
   lift the sandbox's own network policy. Add it only to sandboxes you would
   trust with your host.
-sourceURL: https://github.com/cdupuis/sbx-dev
+sourceURL: https://github.com/cdupuis/sbx-warden
 licenses:
   - MIT
 
@@ -27,21 +27,21 @@ permissions:
 
 environment:
   variables:
-    SBX_DEV_ADDR: host.docker.internal:7391
+    SBX_WARDEN_ADDR: host.docker.internal:7391
 
 setup:
   install:
-    - description: Install the sbx-dev client from its pinned release
+    - description: Install the sbx-warden client from its pinned release
       # Downloading the installer instead of piping it into sh keeps a failed
       # fetch fatal: POSIX sh has no pipefail, so a piped installer that never
       # arrives would exit 0 and leave the sandbox without a client.
       command: |
         set -eu
-        version=v0.4.0
+        version=v0.5.0
         installer="$(mktemp)"
         trap 'rm -f "$installer"' EXIT
         curl -fsSL --retry 3 -o "$installer" \
-          "https://raw.githubusercontent.com/cdupuis/sbx-dev/${version}/install.sh"
+          "https://raw.githubusercontent.com/cdupuis/sbx-warden/${version}/install.sh"
         sh "$installer" --client --version "$version" --dir /usr/local/bin
 
 agentInstructions:
@@ -53,9 +53,9 @@ agentInstructions:
     one, so `sbx ls` lists sandboxes alongside this one rather than anything
     inside it.
 
-    Authentication comes from `SBX_DEV_TOKEN`, which identifies this sandbox to
+    Authentication comes from `SBX_WARDEN_TOKEN`, which identifies this sandbox to
     the host server. It is set when the sandbox is created, by an operator on the
-    host running `sbx-dev grant`. If it is unset, or the server rejects it, that
+    host running `sbx-warden grant`. If it is unset, or the server rejects it, that
     is not something to work around from in here: report it, because only the
     host side can grant this sandbox or recreate it.
 

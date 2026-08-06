@@ -2,7 +2,7 @@ version: '3'
 
 vars:
   BIN: '{{.ROOT_DIR}}/bin'
-  KIT: '{{.ROOT_DIR}}/kit/sbx-dev'
+  KIT: '{{.ROOT_DIR}}/kit/sbx-warden'
   SERVER_ADDR: '127.0.0.1:7391'
 
 tasks:
@@ -15,7 +15,7 @@ tasks:
     desc: Build both binaries for the host platform into ./bin
     cmds:
       - mkdir -p {{.BIN}}
-      - go build -o {{.BIN}}/sbx-dev ./cmd/sbx-dev
+      - go build -o {{.BIN}}/sbx-warden ./cmd/sbx-warden
       - go build -o {{.BIN}}/sbx ./cmd/sbx
 
   build:client:
@@ -118,7 +118,7 @@ tasks:
   run:
     desc: Run the server in the foreground against the host's sbx
     cmds:
-      - go run ./cmd/sbx-dev --addr {{.SERVER_ADDR}} {{.CLI_ARGS}}
+      - go run ./cmd/sbx-warden --addr {{.SERVER_ADDR}} {{.CLI_ARGS}}
 
   allow:
     desc: Add the sandbox network policy rule the client needs

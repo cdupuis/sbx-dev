@@ -1,14 +1,14 @@
-// Command sbx forwards its arguments to an sbx-dev server, which runs them
+// Command sbx forwards its arguments to an sbx-warden server, which runs them
 // against the host's real sbx CLI.
 //
 // Every argument is passed through untouched so that all sbx commands and flags
 // work; this binary is configured entirely through the environment:
 //
-//	SBX_DEV_ADDR         server address (default host.docker.internal:7391)
-//	SBX_DEV_TOKEN        identity token naming this sandbox, from "sbx-dev grant"
-//	SBX_DEV_FORWARD_ENV  comma-separated env var names to send to the server
-//	SBX_DEV_NO_TTY       set to disable remote PTY allocation
-//	SBX_DEV_PRINT_VERSION  print this client's version and exit
+//	SBX_WARDEN_ADDR         server address (default host.docker.internal:7391)
+//	SBX_WARDEN_TOKEN        identity token naming this sandbox, from "sbx-warden grant"
+//	SBX_WARDEN_FORWARD_ENV  comma-separated env var names to send to the server
+//	SBX_WARDEN_NO_TTY       set to disable remote PTY allocation
+//	SBX_WARDEN_PRINT_VERSION  print this client's version and exit
 package main
 
 import (
@@ -19,8 +19,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/cdupuis/sbx-dev/internal/client"
-	"github.com/cdupuis/sbx-dev/internal/protocol"
+	"github.com/cdupuis/sbx-warden/internal/client"
+	"github.com/cdupuis/sbx-warden/internal/protocol"
 )
 
 const defaultAddr = "host.docker.internal:7391"
@@ -30,24 +30,24 @@ var version = "dev"
 
 func main() {
 	// Arguments belong to the remote CLI, so this binary's own version is
-	// reported through the environment. Installers also use the "sbx-dev
+	// reported through the environment. Installers also use the "sbx-warden
 	// client" prefix to recognise their own binary before replacing an sbx on
 	// PATH.
-	if os.Getenv("SBX_DEV_PRINT_VERSION") != "" {
-		fmt.Printf("sbx-dev client %s\n", version)
+	if os.Getenv("SBX_WARDEN_PRINT_VERSION") != "" {
+		fmt.Printf("sbx-warden client %s\n", version)
 		return
 	}
 
-	addr := envOr("SBX_DEV_ADDR", defaultAddr)
+	addr := envOr("SBX_WARDEN_ADDR", defaultAddr)
 
-	token := os.Getenv("SBX_DEV_TOKEN")
+	token := os.Getenv("SBX_WARDEN_TOKEN")
 	if token == "" {
 		fmt.Fprint(os.Stderr, ungrantedHint())
 		os.Exit(protocol.ExitProtocol)
 	}
 
 	ttyFd := int(os.Stdin.Fd())
-	if os.Getenv("SBX_DEV_NO_TTY") != "" {
+	if os.Getenv("SBX_WARDEN_NO_TTY") != "" {
 		ttyFd = client.NoTTY
 	}
 
@@ -77,15 +77,15 @@ func envOr(name, fallback string) string {
 	return fallback
 }
 
-// ungrantedHint explains an empty SBX_DEV_TOKEN. The variable is set when the
+// ungrantedHint explains an empty SBX_WARDEN_TOKEN. The variable is set when the
 // sandbox is created, so a sandbox that was never granted cannot fix this from
 // the inside, and the instructions are for whoever is on the host.
 func ungrantedHint() string {
-	return `sbx: this sandbox has no sbx-dev token, so it cannot be identified to the server.
+	return `sbx: this sandbox has no sbx-warden token, so it cannot be identified to the server.
 
 On the host, grant it and recreate it:
 
-  sbx-dev grant SANDBOX
+  sbx-warden grant SANDBOX
 
 A sandbox's environment is fixed when it is created, so a sandbox that was
 already running when it was granted has to be recreated to pick up the token.
@@ -93,7 +93,7 @@ already running when it was granted has to be recreated to pick up the token.
 }
 
 func forwardedEnv() map[string]string {
-	names := os.Getenv("SBX_DEV_FORWARD_ENV")
+	names := os.Getenv("SBX_WARDEN_FORWARD_ENV")
 	if names == "" {
 		return nil
 	}
@@ -119,13 +119,13 @@ func unreachableHint(addr string) string {
 		port = p
 	}
 	return fmt.Sprintf(`
-No sbx-dev server answered at %s.
+No sbx-warden server answered at %s.
 
 The two usual causes look identical from here, because a sandbox's egress proxy
 accepts the connection before it dials the host:
 
   1. the server is not running on the host
-         sbx-dev --addr 127.0.0.1:%s
+         sbx-warden --addr 127.0.0.1:%s
   2. the network policy does not allow the port
          sbx policy allow network localhost:%s
 

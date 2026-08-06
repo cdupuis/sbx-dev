@@ -9,7 +9,7 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/cdupuis/sbx-dev/internal/protocol"
+	"github.com/cdupuis/sbx-warden/internal/protocol"
 )
 
 // maxHandshakeBody bounds what is drained from a handshake request. The request
@@ -46,7 +46,7 @@ func (s *Server) serveHandshake(conn net.Conn, br *bufio.Reader) {
 	_, _ = io.Copy(io.Discard, io.LimitReader(req.Body, maxHandshakeBody))
 
 	if req.URL.Path != protocol.SessionPath {
-		writeHandshakeError(conn, http.StatusNotFound, "not an sbx-dev handshake endpoint")
+		writeHandshakeError(conn, http.StatusNotFound, "not an sbx-warden handshake endpoint")
 		return
 	}
 	if req.Method != http.MethodPost {

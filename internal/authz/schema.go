@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cdupuis/sbx-dev/internal/catalog"
+	"github.com/cdupuis/sbx-warden/internal/catalog"
 )
 
 // SchemaFile is where the generated schema is committed, relative to the module
@@ -22,7 +22,7 @@ const SchemaFile = "policies/sbx.cedarschema"
 func Schema(cat *catalog.Catalog) []byte {
 	var b bytes.Buffer
 
-	b.WriteString(`// The vocabulary an sbx-dev policy is written against.
+	b.WriteString(`// The vocabulary an sbx-warden policy is written against.
 //
 // Generated from the embedded sbx command catalog. Do not edit: run
 // "task policy:schema" to regenerate it after the catalog changes.
@@ -106,7 +106,7 @@ func contextAttributes() []contextAttribute {
 		{"flags", "Set<String>", "The names of the flags the command was given."},
 		{"hostPaths", "Set<String>", "Every host path the command names, made absolute against the server's working directory and cleaned, so \"..\" cannot walk out of a confined tree."},
 		{"hostPathsRoot", "String", "The deepest directory containing all of hostPaths. Cedar cannot test every member of a set, so confinement is expressed against this: it lies under a prefix exactly when all the paths do."},
-		{"hostPathsUnderWorkdir", "Bool", "Whether every host path lies under the directory sbx-dev runs in. True when the command names no host path. This is the portable form of confinement, for a policy that should not name a site's directory."},
+		{"hostPathsUnderWorkdir", "Bool", "Whether every host path lies under the directory sbx-warden runs in. True when the command names no host path. This is the portable form of confinement, for a policy that should not name a site's directory."},
 		{"sandboxPaths", "Set<String>", `Paths inside a sandbox, from the "sandbox:/path" form sbx cp accepts.`},
 		{"sandboxes", "Set<String>", "Every sandbox the command names."},
 		{"references", "Set<String>", "Image-like references the command names."},

@@ -1,4 +1,4 @@
-// Package client dials an sbx-dev server and runs one command over the
+// Package client dials an sbx-warden server and runs one command over the
 // connection, relaying stdio and returning the remote exit code.
 package client
 
@@ -15,7 +15,7 @@ import (
 
 	"golang.org/x/term"
 
-	"github.com/cdupuis/sbx-dev/internal/protocol"
+	"github.com/cdupuis/sbx-warden/internal/protocol"
 )
 
 // NoTTY disables terminal handling when used as Config.TTYFd.

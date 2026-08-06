@@ -1,4 +1,4 @@
-// Package identity mints and verifies the tokens that tell an sbx-dev server
+// Package identity mints and verifies the tokens that tell an sbx-warden server
 // which sandbox is calling it.
 //
 // A token names its sandbox and authenticates that name with an HMAC over a
@@ -56,17 +56,17 @@ func NewKey() (Key, error) {
 	return buf, nil
 }
 
-// DefaultKeyPath returns the conventional key location, $SBX_DEV_KEY_FILE when
-// set and ~/.sbx-dev/identity.key otherwise.
+// DefaultKeyPath returns the conventional key location, $SBX_WARDEN_KEY_FILE when
+// set and ~/.sbx-warden/identity.key otherwise.
 func DefaultKeyPath() (string, error) {
-	if p := os.Getenv("SBX_DEV_KEY_FILE"); p != "" {
+	if p := os.Getenv("SBX_WARDEN_KEY_FILE"); p != "" {
 		return p, nil
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("locate home directory: %w", err)
 	}
-	return filepath.Join(home, ".sbx-dev", "identity.key"), nil
+	return filepath.Join(home, ".sbx-warden", "identity.key"), nil
 }
 
 // LoadOrCreateKey reads the key at path, generating and persisting one if the
@@ -182,6 +182,6 @@ func (k Key) mac(sandbox, generation string) string {
 	h := hmac.New(sha256.New, k)
 	// namePattern excludes "/", so the separators here delimit the fields
 	// unambiguously and no two distinct inputs share a signed message.
-	h.Write([]byte("sbx-dev/" + tokenVersion + "/" + sandbox + "/" + generation))
+	h.Write([]byte("sbx-warden/" + tokenVersion + "/" + sandbox + "/" + generation))
 	return base64.RawURLEncoding.EncodeToString(h.Sum(nil))
 }

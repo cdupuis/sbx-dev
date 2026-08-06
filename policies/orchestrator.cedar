@@ -5,7 +5,7 @@
 // It is still bounded in two ways. baseline.cedar keeps it away from the
 // credential store, the daemon and the registry; hostPathsUnderWorkdir keeps
 // every workspace it mounts, and every file it copies, under the directory
-// sbx-dev runs in.
+// sbx-warden runs in.
 //
 // Creating a sandbox mounts a host directory into it, so the path condition is
 // what stands between "orchestrate my project" and handing out a mount of the

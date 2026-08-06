@@ -1,4 +1,4 @@
-// Command sbx-dev serves the host's sbx CLI over TCP to sbx clients running
+// Command sbx-warden serves the host's sbx CLI over TCP to sbx clients running
 // inside sandboxes.
 package main
 
@@ -17,12 +17,12 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/cdupuis/sbx-dev/internal/authz"
-	"github.com/cdupuis/sbx-dev/internal/catalog"
-	"github.com/cdupuis/sbx-dev/internal/clog"
-	"github.com/cdupuis/sbx-dev/internal/grant"
-	"github.com/cdupuis/sbx-dev/internal/identity"
-	"github.com/cdupuis/sbx-dev/internal/server"
+	"github.com/cdupuis/sbx-warden/internal/authz"
+	"github.com/cdupuis/sbx-warden/internal/catalog"
+	"github.com/cdupuis/sbx-warden/internal/clog"
+	"github.com/cdupuis/sbx-warden/internal/grant"
+	"github.com/cdupuis/sbx-warden/internal/identity"
+	"github.com/cdupuis/sbx-warden/internal/server"
 )
 
 // DefaultPort is the port both binaries assume when none is configured.
@@ -103,7 +103,7 @@ func main() {
 		run = func() error { return runGrant(os.Args[2:]) }
 	}
 	if err := run(); err != nil {
-		fmt.Fprintf(os.Stderr, "sbx-dev: %v\n", err)
+		fmt.Fprintf(os.Stderr, "sbx-warden: %v\n", err)
 		os.Exit(1)
 	}
 }
@@ -112,7 +112,7 @@ func runGrant(args []string) error {
 	defaultKeyPath, keyPathErr := identity.DefaultKeyPath()
 	defaultRegistryPath, registryPathErr := identity.DefaultRegistryPath()
 
-	fs := flag.NewFlagSet("sbx-dev grant", flag.ContinueOnError)
+	fs := flag.NewFlagSet("sbx-warden grant", flag.ContinueOnError)
 	var (
 		sbxPath      = fs.String("sbx", "sbx", "path to the real sbx binary")
 		keyPath      = fs.String("key-file", defaultKeyPath, "file holding the identity key, created if absent")
@@ -123,7 +123,7 @@ func runGrant(args []string) error {
 	)
 	fs.Usage = func() {
 		out := fs.Output()
-		fmt.Fprintf(out, "Usage: sbx-dev grant [flags] SANDBOX\n\nIssues a sandbox the signed identity token an sbx-dev server recognises it by,\nso a policy can say what that sandbox in particular may do.\n\nFlags:\n")
+		fmt.Fprintf(out, "Usage: sbx-warden grant [flags] SANDBOX\n\nIssues a sandbox the signed identity token an sbx-warden server recognises it by,\nso a policy can say what that sandbox in particular may do.\n\nFlags:\n")
 		fs.PrintDefaults()
 	}
 	if err := fs.Parse(args); err != nil {
@@ -183,7 +183,7 @@ func run() error {
 		allowAny  = flag.Bool("allow-any-bind", false, "permit binding a non-loopback address")
 		showVer   = flag.Bool("version", false, "print the version and exit")
 		policyMap = flag.String("policy-map", defaultMap, "path or URL of the policy map binding Cedar policies to sandbox names and patterns; empty runs with no policy, letting every granted sandbox run any allowed subcommand")
-		keyPath   = flag.String("key-file", "", "file holding the identity key that verifies session tokens (default: the same file sbx-dev grant uses)")
+		keyPath   = flag.String("key-file", "", "file holding the identity key that verifies session tokens (default: the same file sbx-warden grant uses)")
 		allow     stringList
 		allowEnv  stringList
 	)
@@ -192,13 +192,13 @@ func run() error {
 
 	flag.Usage = func() {
 		out := flag.CommandLine.Output()
-		fmt.Fprintf(out, "Usage: sbx-dev [flags]\n       sbx-dev grant [flags] SANDBOX\n\nServes the host's sbx CLI over TCP for sbx clients in sandboxes.\n\nThe grant subcommand issues a sandbox an identity token; run \"sbx-dev grant -h\"\nfor its flags.\n\nFlags:\n")
+		fmt.Fprintf(out, "Usage: sbx-warden [flags]\n       sbx-warden grant [flags] SANDBOX\n\nServes the host's sbx CLI over TCP for sbx clients in sandboxes.\n\nThe grant subcommand issues a sandbox an identity token; run \"sbx-warden grant -h\"\nfor its flags.\n\nFlags:\n")
 		flag.PrintDefaults()
 	}
 	flag.Parse()
 
 	if *showVer {
-		fmt.Printf("sbx-dev server %s\n", version)
+		fmt.Printf("sbx-warden server %s\n", version)
 		return nil
 	}
 	if flag.NArg() > 0 {
@@ -230,7 +230,7 @@ func run() error {
 			if *policyMap == defaultMap {
 				// The operator did not choose this map, so the error alone would
 				// not explain why starting a server reached the network at all.
-				return fmt.Errorf("%w\n\nThis is the default policy map, read from the repository sbx-dev was built\nfrom. Pass --policy-map with a path to use your own, or --policy-map=\"\" to\nrun with no policy", err)
+				return fmt.Errorf("%w\n\nThis is the default policy map, read from the repository sbx-warden was built\nfrom. Pass --policy-map with a path to use your own, or --policy-map=\"\" to\nrun with no policy", err)
 			}
 			return err
 		}
@@ -355,11 +355,11 @@ func checkBind(addr string, allowAny bool) error {
 func connectHint(port string, restricted bool) string {
 	var b strings.Builder
 	b.WriteString("\nTo let a sandbox use the sbx client, on the host:\n\n")
-	fmt.Fprintf(&b, "  sbx-dev grant SANDBOX\n")
+	fmt.Fprintf(&b, "  sbx-warden grant SANDBOX\n")
 	fmt.Fprintf(&b, "  sbx policy allow network localhost:%s --sandbox SANDBOX\n\n", port)
 	b.WriteString("Then in the sandbox:\n\n")
-	fmt.Fprintf(&b, "  export SBX_DEV_ADDR=host.docker.internal:%s\n\n", port)
-	b.WriteString("Granting sets SBX_DEV_TOKEN inside the sandbox to a placeholder that the\n")
+	fmt.Fprintf(&b, "  export SBX_WARDEN_ADDR=host.docker.internal:%s\n\n", port)
+	b.WriteString("Granting sets SBX_WARDEN_TOKEN inside the sandbox to a placeholder that the\n")
 	b.WriteString("egress proxy substitutes, so the sandbox never holds the token itself.\n")
 	if !restricted {
 		b.WriteString("\nPolicy is switched off, so every granted sandbox may run any subcommand.\n")

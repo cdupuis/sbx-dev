@@ -14,8 +14,8 @@ import (
 	"github.com/cedar-policy/cedar-go/x/exp/schema/validate"
 	"github.com/stretchr/testify/require"
 
-	"github.com/cdupuis/sbx-dev/internal/catalog"
-	"github.com/cdupuis/sbx-dev/internal/resolve"
+	"github.com/cdupuis/sbx-warden/internal/catalog"
+	"github.com/cdupuis/sbx-warden/internal/resolve"
 )
 
 func schemaPath() string { return filepath.Join("..", "..", SchemaFile) }

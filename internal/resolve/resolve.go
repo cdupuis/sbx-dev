@@ -15,7 +15,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cdupuis/sbx-dev/internal/catalog"
+	"github.com/cdupuis/sbx-warden/internal/catalog"
 )
 
 // ErrUnresolvable reports an argv that could not be resolved against the

@@ -7,7 +7,7 @@ import (
 
 	"golang.org/x/term"
 
-	"github.com/cdupuis/sbx-dev/internal/protocol"
+	"github.com/cdupuis/sbx-warden/internal/protocol"
 )
 
 // resizePollInterval is how often the terminal is measured. Windows has no

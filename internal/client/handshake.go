@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/cdupuis/sbx-dev/internal/protocol"
+	"github.com/cdupuis/sbx-warden/internal/protocol"
 )
 
 // maxHandshakeResponse bounds what is read from a handshake reply, which is a
@@ -53,7 +53,7 @@ func acquireTicket(ctx context.Context, cfg Config) (string, error) {
 
 	var session protocol.SessionResponse
 	if err := json.Unmarshal(body, &session); err != nil || session.Ticket == "" {
-		return "", errors.New("the sbx-dev server answered the handshake without a ticket")
+		return "", errors.New("the sbx-warden server answered the handshake without a ticket")
 	}
 	return session.Ticket, nil
 }

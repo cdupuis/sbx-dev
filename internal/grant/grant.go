@@ -1,4 +1,4 @@
-// Package grant issues a sandbox the identity token an sbx-dev server
+// Package grant issues a sandbox the identity token an sbx-warden server
 // recognises it by.
 //
 // The token names its sandbox and is signed, so a sandbox cannot claim another's
@@ -18,12 +18,12 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/cdupuis/sbx-dev/internal/identity"
+	"github.com/cdupuis/sbx-warden/internal/identity"
 )
 
 // EnvName is the variable sbx sets inside the sandbox to the token's
 // placeholder, and the one the client reads when it authenticates.
-const EnvName = "SBX_DEV_TOKEN"
+const EnvName = "SBX_WARDEN_TOKEN"
 
 // Config describes one grant.
 type Config struct {
@@ -88,7 +88,7 @@ func Run(ctx context.Context, out io.Writer, cfg Config) error {
 }
 
 func report(out io.Writer, cfg Config, host, token string, generation int) {
-	fmt.Fprintf(out, "Granted %s an sbx-dev identity (generation %d).\n", cfg.Sandbox, generation)
+	fmt.Fprintf(out, "Granted %s an sbx-warden identity (generation %d).\n", cfg.Sandbox, generation)
 	if generation > 1 {
 		fmt.Fprintln(out, "Its earlier tokens no longer authenticate.")
 	}
@@ -126,7 +126,7 @@ only a placeholder.
 // that no longer resolves. The placeholder is a sentinel, not a secret — the
 // proxy substitutes it only for the sandbox the secret is scoped to, so knowing
 // another sandbox's placeholder gains nothing.
-func placeholderFor(sandbox string) string { return "sbx-dev-" + sandbox }
+func placeholderFor(sandbox string) string { return "sbx-warden-" + sandbox }
 
 // registerSecret hands the token to sbx on stdin rather than in argv, so it does
 // not appear in the host's process list.

@@ -1,4 +1,4 @@
-// Command gen-catalog regenerates the sbx command catalog that sbx-dev embeds,
+// Command gen-catalog regenerates the sbx command catalog that sbx-warden embeds,
 // from the CLI reference sbx publishes under docs/yml.
 //
 // Run it against a checkout of sbx after upgrading the host's sbx, so that
@@ -16,7 +16,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/cdupuis/sbx-dev/internal/catalog"
+	"github.com/cdupuis/sbx-warden/internal/catalog"
 )
 
 func main() {

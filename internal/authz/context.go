@@ -7,8 +7,8 @@ import (
 
 	"github.com/cedar-policy/cedar-go/types"
 
-	"github.com/cdupuis/sbx-dev/internal/catalog"
-	"github.com/cdupuis/sbx-dev/internal/resolve"
+	"github.com/cdupuis/sbx-warden/internal/catalog"
+	"github.com/cdupuis/sbx-warden/internal/resolve"
 )
 
 // sandboxRef matches the "sandbox:/path" form sbx cp accepts on either side. The
