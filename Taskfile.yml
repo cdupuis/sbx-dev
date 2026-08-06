@@ -66,7 +66,7 @@ tasks:
       - go mod tidy -diff
 
   kit:validate:
-    desc: Validate the kit and check that it pins the release its version claims
+    desc: Validate the kit and check that every pinned version still agrees
     silent: true
     cmds:
       - |
@@ -81,6 +81,15 @@ tasks:
           echo "kit declares version $declared but installs client v$pinned" >&2
           exit 1
         fi
+        # Documented git references pin the kit by tag, so they go stale on a
+        # release unless they move with it. Non-version refs (main, a SHA) are
+        # deliberate and not checked.
+        for ref in $(grep -o '#ref=v[0-9][0-9.]*' {{.ROOT_DIR}}/README.md | sed 's/^#ref=v//' | sort -u); do
+          if [ "$ref" != "$declared" ]; then
+            echo "README references kit ref v$ref but the kit is version $declared" >&2
+            exit 1
+          fi
+        done
       - sbx kit validate {{.KIT}}
 
   release:check:

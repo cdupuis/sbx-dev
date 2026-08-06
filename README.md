@@ -62,14 +62,25 @@ directly.
 
 ### The client, in a sandbox
 
-Use the kit. `kit/sbx-dev` installs the client while a sandbox is being created,
-allows the egress it needs, and points it at the host, so there is nothing to
-install inside the sandbox afterwards:
+Use the kit. It installs the client while a sandbox is being created, allows the
+egress it needs, and points it at the host, so there is nothing to install inside
+the sandbox afterwards, and nothing to clone to get it:
 
 ```bash
 export SBX_DEV_TOKEN=$(cat ~/.sbx-dev/token)
-sbx create shell . --kit ./kit/sbx-dev --env SBX_DEV_TOKEN
+sbx create shell . \
+  --kit 'git+https://github.com/cdupuis/sbx-dev.git#ref=v0.2.0&dir=kit/sbx-dev' \
+  --env SBX_DEV_TOKEN
 ```
+
+Keep the reference quoted, or the shell reads the `&` before `dir=` as a request
+to run the command in the background.
+
+Remote kits are gated by an allowlist that ships allowing Docker's own sources,
+so the first attempt is refused until `github.com/cdupuis/` joins it. The refusal
+prints the exact `sbx settings set kit.allowedSources` command to run, with your
+existing entries preserved — use that rather than copying a list from here, which
+would replace whatever you already allow.
 
 Prefer this over running the installer inside a sandbox. Sandboxes are
 disposable, so installing by hand is work repeated for every one you create, and
@@ -155,13 +166,20 @@ does not match another.
 Because the kit pins the client release it installs, its `version` tracks the
 client version rather than moving independently.
 
+The `#ref=` in the reference pins the kit the same way, so a sandbox created from
+it months from now still gets this kit installing this client. Point it at
+`#ref=main` to follow the branch instead, or at a commit SHA for a reference that
+cannot move at all — a tag can be repointed, a SHA cannot. A checkout of this
+repository can also name the kit by path, as `./kit/sbx-dev`, which is what
+`task kit:validate` does while you are changing the kit itself.
+
 ### Adding it to a sandbox that already exists
 
 A sandbox that predates the kit does not need the by-hand route: `sbx kit add`
 recreates it with the kit applied, keeping kit-owned volumes and workspace data.
 
 ```bash
-sbx kit add my-sandbox ./kit/sbx-dev
+sbx kit add my-sandbox 'git+https://github.com/cdupuis/sbx-dev.git#ref=v0.2.0&dir=kit/sbx-dev'
 ```
 
 The swap preserves the sandbox's environment, so one created with
@@ -273,9 +291,9 @@ one archive per binary plus `checksums.txt` to a GitHub release:
 git tag -a v0.1.0 -m v0.1.0 && git push origin v0.1.0
 ```
 
-The kit installs a pinned release, so bump `kit/sbx-dev/spec.yaml` to the version
-you are about to tag before tagging it. `task kit:validate` fails when the kit's
-declared version and the release it installs disagree:
+Three things carry the version and have to move together before you tag: the
+`version` and the installed release in `kit/sbx-dev/spec.yaml`, and the `#ref=`
+in this file's kit references. `task kit:validate` fails when they disagree:
 
 ```bash
 task kit:validate
