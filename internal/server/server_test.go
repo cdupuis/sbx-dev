@@ -70,7 +70,7 @@ func startServer(t *testing.T, cfg Config) string {
 		cfg.Token = testToken
 	}
 	if cfg.Logger == nil {
-		cfg.Logger = slog.New(slog.NewTextHandler(io.Discard, nil))
+		cfg.Logger = slog.New(slog.DiscardHandler)
 	}
 
 	srv, err := New(cfg)
@@ -367,4 +367,19 @@ func TestHandshakeTimeoutClosesIdleConnection(t *testing.T) {
 	require.NoError(t, conn.SetDeadline(time.Now().Add(10*time.Second)))
 	_, err = io.ReadAll(conn)
 	require.NoError(t, err)
+}
+
+func TestDescribeCommand(t *testing.T) {
+	require.Equal(t, "sbx ls --all", describeCommand(protocol.Start{Args: []string{"ls", "--all"}}))
+	require.Equal(t, "sbx ls on a terminal", describeCommand(protocol.Start{Args: []string{"ls"}, TTY: true}))
+	require.Equal(t, "sbx", describeCommand(protocol.Start{}))
+}
+
+func TestDescribeResultPrefersTheFailureMessage(t *testing.T) {
+	require.Equal(t, "succeeded", describeResult(protocol.Exit{}))
+	require.Equal(t, "exited with code 2", describeResult(protocol.Exit{Code: 2}))
+	require.Equal(t,
+		"failed: no such command",
+		describeResult(protocol.Exit{Code: protocol.ExitNoExec, Message: "no such command"}),
+	)
 }

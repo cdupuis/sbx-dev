@@ -15,6 +15,7 @@ import (
 	"syscall"
 
 	"github.com/cdupuis/sbx-dev/internal/authtoken"
+	"github.com/cdupuis/sbx-dev/internal/clog"
 	"github.com/cdupuis/sbx-dev/internal/server"
 )
 
@@ -89,7 +90,7 @@ func run() error {
 	if *verbose {
 		level = slog.LevelDebug
 	}
-	log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level}))
+	log := slog.New(clog.New(os.Stderr, level))
 
 	srv, err := server.New(server.Config{
 		Addr:          *addr,
@@ -111,13 +112,11 @@ func run() error {
 		port = DefaultPort
 	}
 
-	log.Info("listening",
-		"addr", srv.Addr().String(),
-		"sbx", srv.SbxPath(),
-		"workdir", srv.Workdir(),
-		"token_file", *tokenPath,
-		"allowed_commands", allowedLabel(allow),
-	)
+	log.Info(fmt.Sprintf("listening on %s", srv.Addr()))
+	log.Info(fmt.Sprintf("running %s in %s", srv.SbxPath(), srv.Workdir()))
+	if len(allow) > 0 {
+		log.Info(fmt.Sprintf("restricted to these subcommands: %s", strings.Join(allow, ", ")))
+	}
 	fmt.Fprint(os.Stderr, connectHint(port, *tokenPath, token))
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -148,13 +147,6 @@ func checkBind(addr string, allowAny bool) error {
 		return fmt.Errorf("--addr %s binds beyond loopback, exposing the sbx CLI to the network; pass --allow-any-bind to override", host)
 	}
 	return nil
-}
-
-func allowedLabel(allow stringList) string {
-	if len(allow) == 0 {
-		return "all"
-	}
-	return strings.Join(allow, ",")
 }
 
 func connectHint(port, tokenPath, token string) string {

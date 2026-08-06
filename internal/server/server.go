@@ -94,7 +94,7 @@ func New(cfg Config) (*Server, error) {
 		cfg.HandshakeTimeout = defaultHandshakeTimeout
 	}
 	if cfg.Logger == nil {
-		cfg.Logger = slog.New(slog.NewTextHandler(io.Discard, nil))
+		cfg.Logger = slog.New(slog.DiscardHandler)
 	}
 
 	allow := make(map[string]struct{}, len(cfg.AllowCommands))
@@ -185,13 +185,13 @@ func (s *Server) Serve(ctx context.Context) error {
 func (s *Server) handleConn(ctx context.Context, conn net.Conn) {
 	defer conn.Close()
 
-	log := s.log.With("peer", conn.RemoteAddr().String())
+	peer := conn.RemoteAddr().String()
 	fw := protocol.NewWriter(conn)
 
 	_ = conn.SetDeadline(time.Now().Add(s.cfg.HandshakeTimeout))
 	start, err := readStart(conn)
 	if err != nil {
-		log.Warn("rejected session", "error", err)
+		s.log.Warn(fmt.Sprintf("rejected %s: %v", peer, err))
 		_ = fw.WriteJSON(protocol.KindExit, protocol.Exit{
 			Code:    protocol.ExitProtocol,
 			Message: err.Error(),
@@ -199,7 +199,7 @@ func (s *Server) handleConn(ctx context.Context, conn net.Conn) {
 		return
 	}
 	if !authtoken.Equal(start.Token, s.cfg.Token) {
-		log.Warn("rejected session", "error", "invalid token")
+		s.log.Warn(fmt.Sprintf("rejected %s: invalid token", peer))
 		_ = fw.WriteJSON(protocol.KindExit, protocol.Exit{
 			Code:    protocol.ExitProtocol,
 			Message: "invalid token",
@@ -207,7 +207,7 @@ func (s *Server) handleConn(ctx context.Context, conn net.Conn) {
 		return
 	}
 	if err := s.checkAllowed(start.Args); err != nil {
-		log.Warn("rejected session", "error", err)
+		s.log.Warn(fmt.Sprintf("rejected %s: %v", peer, err))
 		_ = fw.WriteJSON(protocol.KindExit, protocol.Exit{
 			Code:    protocol.ExitNoExec,
 			Message: err.Error(),
@@ -217,16 +217,40 @@ func (s *Server) handleConn(ctx context.Context, conn net.Conn) {
 	_ = conn.SetDeadline(time.Time{})
 
 	if err := fw.WriteFrame(protocol.KindReady, nil); err != nil {
-		log.Warn("session ended before start", "error", err)
+		s.log.Warn(fmt.Sprintf("%s went away before its command started: %v", peer, err))
 		return
 	}
 
-	log.Info("session started", "args", start.Args, "tty", start.TTY)
+	s.log.Info(fmt.Sprintf("%s runs %s", peer, describeCommand(start)))
 	result := s.runSession(ctx, start, protocol.NewReader(conn), fw)
-	log.Info("session finished", "code", result.Code, "message", result.Message)
+	s.log.Info(fmt.Sprintf("%s %s", peer, describeResult(result)))
 
 	if err := fw.WriteJSON(protocol.KindExit, result); err != nil {
-		log.Debug("could not report exit", "error", err)
+		s.log.Debug(fmt.Sprintf("could not report the exit code to %s: %v", peer, err))
+	}
+}
+
+// describeCommand renders a session's command the way it was asked for, so a
+// log line can be read back as the sbx invocation it ran.
+func describeCommand(start protocol.Start) string {
+	rendered := "sbx"
+	if len(start.Args) > 0 {
+		rendered += " " + strings.Join(start.Args, " ")
+	}
+	if start.TTY {
+		rendered += " on a terminal"
+	}
+	return rendered
+}
+
+func describeResult(result protocol.Exit) string {
+	switch {
+	case result.Message != "":
+		return fmt.Sprintf("failed: %s", result.Message)
+	case result.Code == 0:
+		return "succeeded"
+	default:
+		return fmt.Sprintf("exited with code %d", result.Code)
 	}
 }
 
@@ -385,7 +409,7 @@ func (sess *session) pump() {
 		frame, err := sess.fr.ReadFrame()
 		if err != nil {
 			if !errors.Is(err, io.EOF) && !errors.Is(err, net.ErrClosed) {
-				sess.log.Debug("client stream ended", "error", err)
+				sess.log.Debug(fmt.Sprintf("client stream ended: %v", err))
 			}
 			return
 		}
@@ -393,7 +417,7 @@ func (sess *session) pump() {
 		switch frame.Kind {
 		case protocol.KindStdin:
 			if _, err := sess.stdin.Write(frame.Payload); err != nil {
-				sess.log.Debug("write to child stdin failed", "error", err)
+				sess.log.Debug(fmt.Sprintf("could not write to the child's stdin: %v", err))
 				return
 			}
 		case protocol.KindStdinClose:
@@ -407,7 +431,7 @@ func (sess *session) pump() {
 		case protocol.KindResize:
 			var resize protocol.Resize
 			if err := protocol.DecodeJSON(frame, &resize); err != nil {
-				sess.log.Debug("bad resize frame", "error", err)
+				sess.log.Debug(fmt.Sprintf("ignoring a malformed resize frame: %v", err))
 				continue
 			}
 			if sess.ptmx != nil && resize.Rows > 0 && resize.Cols > 0 {
@@ -416,12 +440,12 @@ func (sess *session) pump() {
 		case protocol.KindSignal:
 			var sig protocol.Signal
 			if err := protocol.DecodeJSON(frame, &sig); err != nil {
-				sess.log.Debug("bad signal frame", "error", err)
+				sess.log.Debug(fmt.Sprintf("ignoring a malformed signal frame: %v", err))
 				continue
 			}
 			sess.deliver(sig.Name)
 		default:
-			sess.log.Debug("ignoring unexpected frame", "kind", frame.Kind.String())
+			sess.log.Debug(fmt.Sprintf("ignoring an unexpected %s frame", frame.Kind))
 		}
 	}
 }
@@ -432,11 +456,11 @@ func (sess *session) deliver(name string) {
 	}
 	sig, ok := signalsByName[strings.ToUpper(strings.TrimPrefix(name, "SIG"))]
 	if !ok {
-		sess.log.Debug("ignoring unknown signal", "name", name)
+		sess.log.Debug(fmt.Sprintf("ignoring unknown signal %s", name))
 		return
 	}
 	if err := sess.cmd.Process.Signal(sig); err != nil {
-		sess.log.Debug("signal delivery failed", "name", name, "error", err)
+		sess.log.Debug(fmt.Sprintf("could not deliver %s: %v", name, err))
 	}
 }
 
