@@ -118,24 +118,36 @@ func run(ctx context.Context, conn net.Conn, cfg Config, useTTY bool, restore fu
 		return protocol.ExitProtocol, fmt.Errorf("%w: %w", ErrUnreachable, err)
 	}
 
-	// The server replies Ready once authenticated, or Exit to refuse.
-	frame, err := fr.ReadFrame()
-	if err != nil {
-		return protocol.ExitProtocol, fmt.Errorf("%w: awaiting server ready: %w", ErrUnreachable, err)
-	}
-	switch frame.Kind {
-	case protocol.KindReady:
-	case protocol.KindExit:
-		var exit protocol.Exit
-		if err := protocol.DecodeJSON(frame, &exit); err != nil {
-			return protocol.ExitProtocol, err
+	// The server replies Ready once authorized, or Exit to refuse. It may write to
+	// stderr before either, because a command a policy withheld waits on an
+	// operator answering a prompt on the host, and there is no bound on how long
+	// that takes. Relaying those lines is what tells the caller it is waiting
+	// rather than hung.
+ready:
+	for {
+		frame, err := fr.ReadFrame()
+		if err != nil {
+			return protocol.ExitProtocol, fmt.Errorf("%w: awaiting server ready: %w", ErrUnreachable, err)
 		}
-		if exit.Message != "" {
-			return exit.Code, errors.New(exit.Message)
+		switch frame.Kind {
+		case protocol.KindReady:
+			break ready
+		case protocol.KindStderr:
+			if cfg.Stderr != nil {
+				_, _ = cfg.Stderr.Write(frame.Payload)
+			}
+		case protocol.KindExit:
+			var exit protocol.Exit
+			if err := protocol.DecodeJSON(frame, &exit); err != nil {
+				return protocol.ExitProtocol, err
+			}
+			if exit.Message != "" {
+				return exit.Code, errors.New(exit.Message)
+			}
+			return exit.Code, nil
+		default:
+			return protocol.ExitProtocol, fmt.Errorf("%w: expected ready frame, got %s", ErrUnreachable, frame.Kind)
 		}
-		return exit.Code, nil
-	default:
-		return protocol.ExitProtocol, fmt.Errorf("%w: expected ready frame, got %s", ErrUnreachable, frame.Kind)
 	}
 
 	go forwardStdin(cfg.Stdin, fw)

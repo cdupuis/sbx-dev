@@ -57,6 +57,12 @@ type Config struct {
 	// authorizes nothing, which leaves every granted sandbox able to run any
 	// subcommand AllowCommands permits.
 	Authorizer *authz.Authorizer
+	// Approver answers the commands a policy withheld pending confirmation. It
+	// defaults to asking on the terminal the server was started from, so a
+	// server started without one refuses them rather than deciding for itself.
+	Approver Approver
+	// ApprovalTimeout bounds the wait for an answer. Zero takes the default.
+	ApprovalTimeout time.Duration
 	// IdentityKey verifies the identity tokens sessions authenticate with. It is
 	// required: a session names the sandbox it belongs to, and without the key
 	// that claim cannot be checked.
@@ -127,6 +133,9 @@ func New(cfg Config) (*Server, error) {
 		if err != nil {
 			return nil, fmt.Errorf("server: load command catalog: %w", err)
 		}
+	}
+	if cfg.Approver == nil {
+		cfg.Approver = NewTerminalApprover(os.Stdin, os.Stderr, cfg.ApprovalTimeout)
 	}
 
 	allow := make(map[string]struct{}, len(cfg.AllowCommands))
@@ -278,6 +287,11 @@ func (s *Server) runFramedSession(ctx context.Context, conn net.Conn) {
 		})
 		return
 	}
+	// The deadline bounds an unauthenticated connection, and this one is now
+	// authenticated. Authorizing it may also block for as long as an operator
+	// takes to answer a prompt, which is not a stalled connection.
+	_ = conn.SetDeadline(time.Time{})
+
 	if err := s.checkAllowed(start.Args); err != nil {
 		s.log.Warn(fmt.Sprintf("rejected %s: %v", peer, err))
 		_ = fw.WriteJSON(protocol.KindExit, protocol.Exit{
@@ -286,7 +300,7 @@ func (s *Server) runFramedSession(ctx context.Context, conn net.Conn) {
 		})
 		return
 	}
-	if err := s.authorize(caller, start.Args); err != nil {
+	if err := s.authorize(ctx, caller, start.Args, fw.Stream(protocol.KindStderr)); err != nil {
 		s.log.Warn(fmt.Sprintf("rejected %s: %v", caller, err))
 		_ = fw.WriteJSON(protocol.KindExit, protocol.Exit{
 			Code:    protocol.ExitNoExec,
@@ -294,7 +308,6 @@ func (s *Server) runFramedSession(ctx context.Context, conn net.Conn) {
 		})
 		return
 	}
-	_ = conn.SetDeadline(time.Time{})
 
 	if err := fw.WriteFrame(protocol.KindReady, nil); err != nil {
 		s.log.Warn(fmt.Sprintf("%s went away before its command started: %v", peer, err))

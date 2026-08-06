@@ -1,8 +1,11 @@
 package server
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"io"
+	"strings"
 
 	"github.com/cdupuis/sbx-warden/internal/authz"
 	"github.com/cdupuis/sbx-warden/internal/identity"
@@ -59,7 +62,11 @@ func (s *Server) authenticate(peer, token string) (caller, error) {
 // authorize resolves the argv and asks the policy about it. A server with no
 // policy authorizes nothing here, leaving the subcommand allowlist as the only
 // restriction.
-func (s *Server) authorize(c caller, args []string) error {
+//
+// It blocks while a withheld command is put to an operator, so notify carries a
+// line back to the caller: from inside a sandbox an unannounced wait on a person
+// is indistinguishable from a hung server.
+func (s *Server) authorize(ctx context.Context, c caller, args []string, notify io.Writer) error {
 	if s.cfg.Authorizer == nil {
 		return nil
 	}
@@ -78,10 +85,58 @@ func (s *Server) authorize(c caller, args []string) error {
 	})
 	s.logDecision(c, inv, decision)
 
+	if decision.NeedsApproval {
+		return s.seekApproval(ctx, c, inv, notify)
+	}
 	if !decision.Allowed {
 		return errors.New(decision.Reason(inv.Name()))
 	}
 	return nil
+}
+
+// seekApproval puts a withheld command to an operator and reports what they said.
+// Every outcome other than a yes denies, including having nobody to ask.
+func (s *Server) seekApproval(ctx context.Context, c caller, inv *resolve.Invocation, notify io.Writer) error {
+	s.log.Info(fmt.Sprintf("%s asks to run %s", c, inv.Name()))
+	if notify != nil {
+		fmt.Fprintf(notify, "sbx: %s is waiting for an operator to approve it\n", inv.Name())
+	}
+
+	approved, err := s.cfg.Approver.Approve(ctx, Approval{
+		Sandbox: c.sandbox.Sandbox,
+		Command: inv.Name(),
+		Details: approvalDetails(inv),
+	})
+	switch {
+	case errors.Is(err, ErrNoTerminal):
+		s.log.Warn(fmt.Sprintf("could not ask anyone about %s for %s: %v", inv.Name(), c, err))
+		return fmt.Errorf("%s needs an operator's approval, and %w", inv.Name(), err)
+	case err != nil:
+		s.log.Warn(fmt.Sprintf("approval for %s failed for %s: %v", inv.Name(), c, err))
+		return fmt.Errorf("%s was not approved", inv.Name())
+	case !approved:
+		s.log.Info(fmt.Sprintf("refused %s for %s", inv.Name(), c))
+		return fmt.Errorf("an operator refused %s", inv.Name())
+	}
+
+	s.log.Info(fmt.Sprintf("approved %s for %s", inv.Name(), c))
+	return nil
+}
+
+// approvalDetails describes what an operator is being asked to allow. The values
+// come from the caller and are sanitized where the prompt is rendered.
+func approvalDetails(inv *resolve.Invocation) []string {
+	var details []string
+	for _, slot := range inv.Slots {
+		details = append(details, slot.Name+": "+slot.Value)
+	}
+	if flags := inv.FlagNames(); len(flags) > 0 {
+		details = append(details, "flags: --"+strings.Join(flags, " --"))
+	}
+	if len(inv.PassThrough) > 0 {
+		details = append(details, "runs: "+strings.Join(inv.PassThrough, " "))
+	}
+	return details
 }
 
 func (s *Server) logDecision(c caller, inv *resolve.Invocation, decision authz.Decision) {
