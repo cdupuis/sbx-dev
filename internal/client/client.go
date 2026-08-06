@@ -78,23 +78,10 @@ func Run(ctx context.Context, cfg Config) (int, error) {
 
 	useTTY := cfg.TTYFd != NoTTY && term.IsTerminal(cfg.TTYFd)
 
-	var restore func()
-	if useTTY {
-		state, err := term.MakeRaw(cfg.TTYFd)
-		if err != nil {
-			return protocol.ExitProtocol, fmt.Errorf("switch terminal to raw mode: %w", err)
-		}
-		restore = func() { _ = term.Restore(cfg.TTYFd, state) }
-		// Restore before returning so a later error message is not printed
-		// into a raw terminal.
-		defer restore()
-	}
-
-	code, err := run(ctx, conn, cfg, useTTY, restore)
-	return code, err
+	return run(ctx, conn, cfg, useTTY)
 }
 
-func run(ctx context.Context, conn net.Conn, cfg Config, useTTY bool, restore func()) (int, error) {
+func run(ctx context.Context, conn net.Conn, cfg Config, useTTY bool) (int, error) {
 	if err := protocol.WriteHandshake(conn); err != nil {
 		return protocol.ExitProtocol, fmt.Errorf("%w: %w", ErrUnreachable, err)
 	}
@@ -148,6 +135,28 @@ ready:
 		default:
 			return protocol.ExitProtocol, fmt.Errorf("%w: expected ready frame, got %s", ErrUnreachable, frame.Kind)
 		}
+	}
+
+	// Raw mode waits until the session is ready, because there is nothing to
+	// stream before that and the wait is not always short: a command a policy
+	// withheld sits above until an operator answers a prompt on the host. A raw
+	// terminal through that wait would print the notice saying so without
+	// returning the carriage, and would swallow the interrupt that gives up on
+	// waiting, since nothing forwards keystrokes yet either.
+	var restore func()
+	if useTTY {
+		state, err := term.MakeRaw(cfg.TTYFd)
+		if err != nil {
+			return protocol.ExitProtocol, fmt.Errorf("switch terminal to raw mode: %w", err)
+		}
+		restore = func() { _ = term.Restore(cfg.TTYFd, state) }
+		// Restore before returning so a later error message is not printed into a
+		// raw terminal.
+		defer restore()
+
+		// cfg is a copy, so this redirects what the session relays from here on
+		// without affecting the caller's own configuration.
+		cfg.Stderr = forTerminal(cfg.Stderr)
 	}
 
 	go forwardStdin(cfg.Stdin, fw)
