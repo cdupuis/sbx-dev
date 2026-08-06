@@ -97,6 +97,10 @@ sandbox's policy:
 curl -fsSL https://raw.githubusercontent.com/cdupuis/sbx-dev/main/install.sh | sh -s -- --client
 ```
 
+That lands in `~/.local/bin`, which is writable and already first on `PATH` in
+the standard sandbox images, so pass no `--dir`: `/usr/local/bin` is root-owned
+and the agent cannot write to it.
+
 Or copy a locally built binary in, which needs no extra egress:
 
 ```bash
