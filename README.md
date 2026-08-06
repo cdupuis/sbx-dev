@@ -36,26 +36,55 @@ forwards window-size changes.
 
 ## Install
 
+The two binaries install by different routes, because they live in different
+places. You install the server on your host. The client belongs inside a sandbox
+that does not exist yet, so the kit installs it as each sandbox is created.
+
+### The server, on your host
+
 On Linux or macOS:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/cdupuis/sbx-dev/main/install.sh | sh
-```
-
-On Windows, in PowerShell:
-
-```powershell
-irm https://raw.githubusercontent.com/cdupuis/sbx-dev/main/install.ps1 | iex
-```
-
-Both binaries are installed by default. Add `--server` or `--client` to pick one
-— on your host you only need the server, and inside a sandbox only the client:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/cdupuis/sbx-dev/main/install.sh | sh -s -- --server
 ```
 
-The installers download the latest GitHub release, verify it against the
+On Windows, in PowerShell:
+
+```powershell
+$env:SBX_DEV_COMPONENTS = 'server'
+irm https://raw.githubusercontent.com/cdupuis/sbx-dev/main/install.ps1 | iex
+```
+
+Then [run it](#run-the-server-on-the-host); the first start writes the token the
+client needs. Dropping `--server` installs both binaries, which is only worth
+doing if you want a client on the host too, for testing against the server
+directly.
+
+### The client, in a sandbox
+
+Use the kit. `kit/sbx-dev` installs the client while a sandbox is being created,
+allows the egress it needs, and points it at the host, so there is nothing to
+install inside the sandbox afterwards:
+
+```bash
+export SBX_DEV_TOKEN=$(cat ~/.sbx-dev/token)
+sbx create shell . --kit ./kit/sbx-dev --env SBX_DEV_TOKEN
+```
+
+Prefer this over running the installer inside a sandbox. Sandboxes are
+disposable, so installing by hand is work repeated for every one you create, and
+it happens from inside, where reaching GitHub needs egress you have to grant
+first and you get whichever release is latest at that moment. The kit declares
+the egress alongside the install and pins the release, so every sandbox made from
+it gets the same client.
+
+[Set up the client in a sandbox](#set-up-the-client-in-a-sandbox) covers what the
+kit configures, how to add it to a sandbox that already exists, and the by-hand
+route.
+
+### Installer reference
+
+Both installers download the latest GitHub release, verify it against the
 published `checksums.txt`, and install into `/usr/local/bin` when it is writable
 or `~/.local/bin` otherwise (`%LOCALAPPDATA%\sbx-dev\bin` on Windows). They never
 invoke `sudo`, since a piped script has no terminal to prompt on.
@@ -102,19 +131,15 @@ publish your `sbx` CLI to the LAN and buys nothing.
 
 ### With the kit
 
-`kit/sbx-dev` is a v2 kit that installs the client while the sandbox is being
-created, allows the egress it needs, and points the client at the host:
+The [install section](#the-client-in-a-sandbox) has the command. The kit is a v2
+mixin, so it composes with any agent rather than replacing one: it installs the
+pinned client release into `/usr/local/bin`, exports `SBX_DEV_ADDR`, and allows
+the egress those need. It leaves out the token deliberately.
 
-```bash
-export SBX_DEV_TOKEN=$(cat ~/.sbx-dev/token)
-sbx create shell . --kit ./kit/sbx-dev --env SBX_DEV_TOKEN
-```
-
-The kit deliberately does not carry the token. Kit environment values are
-literal, so a token in the kit would be a secret committed to a repository, and
-the kit credential mechanism cannot help: it injects secrets into HTTP headers,
-which does nothing for a raw TCP protocol. A bare `--env SBX_DEV_TOKEN` takes
-the value from your shell instead.
+Kit environment values are literal, so a token in the kit would be a secret
+committed to a repository, and the kit credential mechanism cannot help: it
+injects secrets into HTTP headers, which does nothing for a raw TCP protocol. A
+bare `--env SBX_DEV_TOKEN` takes the value from your shell instead.
 
 The kit allows exactly one host port, `localhost:7391`, so the sandbox can reach
 the server and nothing else on your host — not even another port on the same
@@ -130,7 +155,26 @@ does not match another.
 Because the kit pins the client release it installs, its `version` tracks the
 client version rather than moving independently.
 
+### Adding it to a sandbox that already exists
+
+A sandbox that predates the kit does not need the by-hand route: `sbx kit add`
+recreates it with the kit applied, keeping kit-owned volumes and workspace data.
+
+```bash
+sbx kit add my-sandbox ./kit/sbx-dev
+```
+
+The swap preserves the sandbox's environment, so one created with
+`--env SBX_DEV_TOKEN` keeps its token. One created without it has no token to
+keep, and a container's environment is fixed when it is created, so put the token
+in the file the client falls back to instead: it reads `~/.sbx-dev/token` inside
+the sandbox whenever `SBX_DEV_TOKEN` is unset.
+
 ### By hand
+
+Two cases are left for this: trying a locally built client before you release it,
+and sandboxes old enough that `sbx kit add` refuses them, which it does for any
+sandbox created before that command shipped.
 
 Allow the port in the sandbox network policy. The rule must name `localhost`,
 not `host.docker.internal`, because the proxy rewrites the request host before
