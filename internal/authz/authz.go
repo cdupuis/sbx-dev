@@ -16,8 +16,6 @@ package authz
 import (
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -140,31 +138,32 @@ func New(bindings []Binding) (*Authorizer, error) {
 	return a, nil
 }
 
-// NewFromPolicyMap compiles every policy a map binds.
-func NewFromPolicyMap(mapPath string) (*Authorizer, error) {
-	bindings, err := LoadPolicyMap(mapPath)
+// NewFromPolicyMap compiles every policy a map binds. The map is a path or a
+// URL, and so is each policy it names.
+func NewFromPolicyMap(mapRef string) (*Authorizer, error) {
+	bindings, err := LoadPolicyMap(mapRef)
 	if err != nil {
 		return nil, err
 	}
 	return New(bindings)
 }
 
-// compileBinding parses a binding's policy files, qualifying each policy id with
-// the file it came from. Cedar numbers policies per source, so two files both
+// compileBinding parses a binding's policies, qualifying each policy id with the
+// document it came from. Cedar numbers policies per source, so two documents both
 // contain a "policy0"; without qualification merging them would drop one, and a
-// diagnostic could not say which file decided.
+// diagnostic could not say which one decided.
 func compileBinding(binding Binding) (compiledBinding, error) {
 	compiled := compiledBinding{binding: binding, policies: cedar.PolicyMap{}}
-	for _, file := range binding.Policies {
-		source, err := os.ReadFile(file)
+	for _, ref := range binding.Policies {
+		source, err := readRef(ref)
 		if err != nil {
 			return compiledBinding{}, fmt.Errorf("authz: read policy: %w", err)
 		}
-		set, err := cedar.NewPolicySetFromBytes(file, source)
+		set, err := cedar.NewPolicySetFromBytes(ref, source)
 		if err != nil {
-			return compiledBinding{}, fmt.Errorf("authz: parse %s: %w", file, err)
+			return compiledBinding{}, fmt.Errorf("authz: parse %s: %w", ref, err)
 		}
-		name := filepath.Base(file)
+		name := refName(ref)
 		for id, policy := range set.All() {
 			compiled.policies[cedar.PolicyID(name+"#"+string(id))] = policy
 		}

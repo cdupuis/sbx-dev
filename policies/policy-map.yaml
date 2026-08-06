@@ -8,9 +8,10 @@
 # A sandbox that matches no binding is granted nothing and is told so, which
 # distinguishes "I forgot to bind this sandbox" from "a rule refused".
 #
-# Policy paths are relative to this file. Patterns are globs over the sandbox
-# name: "*" matches any run of characters, "?" a single one, and a pattern
-# without a wildcard is an exact name.
+# Policies are named relative to this file, so serving this map over https
+# resolves them next to it there rather than on the host that reads it. Patterns
+# are globs over the sandbox name: "*" matches any run of characters, "?" a
+# single one, and a pattern without a wildcard is an exact name.
 
 bindings:
   # Guardrails and a floor of read-only access for every sandbox.

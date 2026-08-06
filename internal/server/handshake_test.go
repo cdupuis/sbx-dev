@@ -89,12 +89,14 @@ func TestHandshakeRefusesATicket(t *testing.T) {
 	require.Equal(t, http.StatusUnauthorized, status)
 }
 
-func TestHandshakeRefusesTheSharedTokenWhenAPolicyIsConfigured(t *testing.T) {
+func TestHandshakeRefusesATokenSignedByAnotherKey(t *testing.T) {
 	ps := startPolicyServer(t)
 
+	// testToken is well-formed and names a sandbox, but it is signed by the
+	// package's fixed key rather than this server's.
 	status, body := handshake(t, ps.addr, testToken)
 	require.Equal(t, http.StatusUnauthorized, status)
-	require.Contains(t, string(body), "requires a sandbox identity token")
+	require.Contains(t, string(body), "invalid token")
 }
 
 func TestHandshakeAnswersOnlyItsOwnRoute(t *testing.T) {

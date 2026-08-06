@@ -1,7 +1,7 @@
 schemaVersion: "2"
 kind: mixin
 name: sbx-dev
-version: "0.3.0"
+version: "0.4.0"
 displayName: sbx-dev client
 description: |
   Installs the sbx-dev client, which forwards sbx commands to the sbx-dev
@@ -37,7 +37,7 @@ setup:
       # arrives would exit 0 and leave the sandbox without a client.
       command: |
         set -eu
-        version=v0.3.0
+        version=v0.4.0
         installer="$(mktemp)"
         trap 'rm -f "$installer"' EXIT
         curl -fsSL --retry 3 -o "$installer" \
@@ -53,6 +53,11 @@ agentInstructions:
     one, so `sbx ls` lists sandboxes alongside this one rather than anything
     inside it.
 
-    Every call needs `SBX_DEV_TOKEN` to hold the host server's token. Without
-    it the server rejects the session, and the client cannot tell that apart
-    from the host having no server running.
+    Authentication comes from `SBX_DEV_TOKEN`, which identifies this sandbox to
+    the host server. It is set when the sandbox is created, by an operator on the
+    host running `sbx-dev grant`. If it is unset, or the server rejects it, that
+    is not something to work around from in here: report it, because only the
+    host side can grant this sandbox or recreate it.
+
+    The host server may also refuse individual commands by policy, which is a
+    decision about this sandbox rather than an error to retry.

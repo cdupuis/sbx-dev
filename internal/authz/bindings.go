@@ -2,9 +2,7 @@ package authz
 
 import (
 	"fmt"
-	"os"
 	"path"
-	"path/filepath"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -41,7 +39,8 @@ type Binding struct {
 	// glob over the sandbox name: "*" matches any run of characters and "?" a
 	// single one. A pattern without a wildcard is an exact name.
 	Sandboxes stringList `yaml:"sandboxes"`
-	// Policies are the Cedar files to evaluate, relative to the policy map.
+	// Policies are the Cedar documents to evaluate, named relative to the policy
+	// map or by absolute path or URL.
 	Policies stringList `yaml:"policies"`
 	// Groups are the group memberships to give the matching sandboxes, which is
 	// how a policy can say "in SBX::Group::\"workers\"" instead of naming each
@@ -71,43 +70,44 @@ func (l *stringList) UnmarshalYAML(node *yaml.Node) error {
 	return nil
 }
 
-// LoadPolicyMap reads a policy map and resolves each policy path against the
-// map's own directory, so a directory of policies can be moved or checked out
-// anywhere without editing it.
-func LoadPolicyMap(mapPath string) ([]Binding, error) {
-	raw, err := os.ReadFile(mapPath)
+// LoadPolicyMap reads a policy map from a path or a URL and resolves each policy
+// reference against the map's own location, so a set of policies can be moved,
+// checked out, or served from anywhere without editing it.
+func LoadPolicyMap(mapRef string) ([]Binding, error) {
+	raw, err := readRef(mapRef)
 	if err != nil {
 		return nil, fmt.Errorf("authz: read policy map: %w", err)
 	}
 
 	var parsed policyMap
 	if err := yaml.Unmarshal(raw, &parsed); err != nil {
-		return nil, fmt.Errorf("authz: parse policy map %s: %w", mapPath, err)
+		return nil, fmt.Errorf("authz: parse policy map %s: %w", mapRef, err)
 	}
 	if len(parsed.Bindings) == 0 {
-		return nil, fmt.Errorf("authz: policy map %s binds no sandboxes to a policy", mapPath)
+		return nil, fmt.Errorf("authz: policy map %s binds no sandboxes to a policy", mapRef)
 	}
 
-	base := filepath.Dir(mapPath)
 	for i, binding := range parsed.Bindings {
 		if len(binding.Sandboxes) == 0 {
-			return nil, fmt.Errorf("authz: policy map %s: binding %d names no sandboxes", mapPath, i+1)
+			return nil, fmt.Errorf("authz: policy map %s: binding %d names no sandboxes", mapRef, i+1)
 		}
 		for _, pattern := range binding.Sandboxes {
 			// A malformed pattern would silently match nothing, which reads as a
 			// policy that was applied and denied rather than one never consulted.
 			if _, err := path.Match(pattern, "probe"); err != nil {
-				return nil, fmt.Errorf("authz: policy map %s: %q is not a valid sandbox pattern: %w", mapPath, pattern, err)
+				return nil, fmt.Errorf("authz: policy map %s: %q is not a valid sandbox pattern: %w", mapRef, pattern, err)
 			}
 		}
 		if len(binding.Policies) == 0 && len(binding.Groups) == 0 {
 			return nil, fmt.Errorf("authz: policy map %s: binding for %s assigns neither a policy nor a group",
-				mapPath, strings.Join(binding.Sandboxes, ", "))
+				mapRef, strings.Join(binding.Sandboxes, ", "))
 		}
 		for j, policy := range binding.Policies {
-			if !filepath.IsAbs(policy) {
-				parsed.Bindings[i].Policies[j] = filepath.Join(base, policy)
+			resolved, err := resolveRef(mapRef, policy)
+			if err != nil {
+				return nil, fmt.Errorf("authz: policy map %s: %w", mapRef, err)
 			}
+			parsed.Bindings[i].Policies[j] = resolved
 		}
 	}
 	return parsed.Bindings, nil

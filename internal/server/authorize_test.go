@@ -1,7 +1,6 @@
 package server
 
 import (
-	"log/slog"
 	"os"
 	"path/filepath"
 	"testing"
@@ -99,13 +98,13 @@ func TestSessionAuthorizesEachSandboxSeparately(t *testing.T) {
 	require.Error(t, refused.err, "a worker may not")
 }
 
-func TestSessionRefusesTheSharedTokenWhenAPolicyIsConfigured(t *testing.T) {
+func TestSessionRefusesASecretThatNamesNoSandbox(t *testing.T) {
 	ps := startPolicyServer(t)
 
-	// The shared token names no sandbox, so no rule could describe its holder.
-	// Accepting it would be a way past every rule.
-	got := runClient(t, ps.addr, testToken, nil, "version")
-	require.ErrorContains(t, got.err, "requires a sandbox identity token")
+	// A bare secret is not a credential here. Every session names the sandbox it
+	// belongs to, because a rule can only describe a caller it can identify.
+	got := runClient(t, ps.addr, "0123456789abcdef", nil, "version")
+	require.ErrorContains(t, got.err, "invalid token")
 }
 
 func TestSessionRefusesAForgedToken(t *testing.T) {
@@ -124,8 +123,8 @@ func TestSessionRefusesARenamedToken(t *testing.T) {
 	ps := startPolicyServer(t)
 	token := ps.token(t, "worker-1", 1)
 
-	// Editing the sandbox name out of a valid token must not promote it, and it
-	// must not fall back to being treated as the shared token either.
+	// Editing the sandbox name out of a valid token must not promote it: the MAC
+	// covers the name, so the signature no longer matches what the token claims.
 	got := runClient(t, ps.addr, "v1.orchestrator.1."+token[len("v1.worker-1.1."):], nil, "rm", "worker-2")
 	require.ErrorContains(t, got.err, "invalid token")
 }
@@ -154,21 +153,12 @@ func TestSessionRefusesACommandLineItCannotResolve(t *testing.T) {
 	require.ErrorContains(t, hidden.err, "has no --app-name")
 }
 
-func TestNewRequiresAnIdentityKeyAlongsideAPolicy(t *testing.T) {
-	_, err := New(Config{
-		Token:      testToken,
-		SbxPath:    "sh",
-		Authorizer: testAuthorizer(t),
-		Logger:     slog.New(slog.DiscardHandler),
-	})
-	require.ErrorContains(t, err, "needs an identity key")
-}
-
-func TestASharedTokenStillWorksWithoutAPolicy(t *testing.T) {
-	// Turning authorization off must not change how the server behaves today.
+// Without a policy the server still authenticates every caller; it just does
+// not restrict what a granted sandbox may then do.
+func TestSessionWithoutAPolicyRunsAnyCommand(t *testing.T) {
 	addr := startServer(t, Config{})
 
-	got := runClient(t, addr, testToken, nil, "version")
+	got := runClient(t, addr, testToken, nil, "rm", "worker-2")
 	require.NoError(t, got.err)
-	require.Contains(t, got.stdout, "sbx version")
+	require.Contains(t, got.stdout, "removed:worker-2")
 }

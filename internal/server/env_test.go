@@ -70,10 +70,10 @@ func TestFilterEnvOrdersEntriesDeterministically(t *testing.T) {
 
 func TestNewRejectsHijackNamesInAllowEnv(t *testing.T) {
 	_, err := New(Config{
-		Token:    testToken,
-		SbxPath:  "sh",
-		AllowEnv: []string{"PATH"},
-		Logger:   slog.New(slog.DiscardHandler),
+		IdentityKey: testKey,
+		SbxPath:     "sh",
+		AllowEnv:    []string{"PATH"},
+		Logger:      slog.New(slog.DiscardHandler),
 	})
 
 	require.ErrorContains(t, err, "refusing to forward PATH")
@@ -81,10 +81,10 @@ func TestNewRejectsHijackNamesInAllowEnv(t *testing.T) {
 
 func TestNewRejectsMalformedAllowEnvName(t *testing.T) {
 	_, err := New(Config{
-		Token:    testToken,
-		SbxPath:  "sh",
-		AllowEnv: []string{"not a name"},
-		Logger:   slog.New(slog.DiscardHandler),
+		IdentityKey: testKey,
+		SbxPath:     "sh",
+		AllowEnv:    []string{"not a name"},
+		Logger:      slog.New(slog.DiscardHandler),
 	})
 
 	require.ErrorContains(t, err, "not a valid environment variable name")

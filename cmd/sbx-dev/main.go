@@ -12,10 +12,11 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"regexp"
+	"runtime/debug"
 	"strings"
 	"syscall"
 
-	"github.com/cdupuis/sbx-dev/internal/authtoken"
 	"github.com/cdupuis/sbx-dev/internal/authz"
 	"github.com/cdupuis/sbx-dev/internal/catalog"
 	"github.com/cdupuis/sbx-dev/internal/clog"
@@ -26,6 +27,59 @@ import (
 
 // DefaultPort is the port both binaries assume when none is configured.
 const DefaultPort = "7391"
+
+// shippedPolicyMap is where this repository keeps the policy map, both on disk
+// and in the tree served from GitHub.
+const shippedPolicyMap = "policies/policy-map.yaml"
+
+// defaultPolicyMap is the policy map a server authorizes against when none is
+// named: the one this repository ships, read from its main branch.
+//
+// A default that grants nothing beyond reading, and refuses the credential store
+// and the daemon outright, is the right starting point for a service that hands a
+// sandbox the host's control plane. It costs a network read at startup; pass a
+// path to avoid that, or an empty value to run with no policy at all.
+//
+// The repository is derived from the module path rather than written out, so a
+// fork defaults to the policies it ships rather than silently trusting the ones
+// upstream might change. A module that is not a GitHub repository falls back to
+// the path, which fails audibly when absent instead of starting unrestricted.
+func defaultPolicyMap() string {
+	if url, ok := gitHubRaw(modulePath(), "main", shippedPolicyMap); ok {
+		return url
+	}
+	return shippedPolicyMap
+}
+
+// modulePath reports the module this binary was built from.
+func modulePath() string {
+	if info, ok := debug.ReadBuildInfo(); ok {
+		return info.Main.Path
+	}
+	return ""
+}
+
+// majorVersionSuffix matches the "/v2" a module path carries from v2 onwards. It
+// is part of the module path but not of the repository, so it is dropped when
+// naming files in that repository.
+var majorVersionSuffix = regexp.MustCompile(`^v[0-9]+$`)
+
+// gitHubRaw returns the URL a file in a module's repository is served from,
+// reporting false for a module GitHub does not host.
+func gitHubRaw(module, ref, file string) (string, bool) {
+	rest, ok := strings.CutPrefix(module, "github.com/")
+	if !ok {
+		return "", false
+	}
+	segments := strings.Split(rest, "/")
+	if len(segments) > 2 && majorVersionSuffix.MatchString(segments[len(segments)-1]) {
+		segments = segments[:len(segments)-1]
+	}
+	if len(segments) != 2 || segments[0] == "" || segments[1] == "" {
+		return "", false
+	}
+	return fmt.Sprintf("https://raw.githubusercontent.com/%s/%s/%s/%s", segments[0], segments[1], ref, file), true
+}
 
 // version is overwritten at link time by the release build.
 var version = "dev"
@@ -119,17 +173,16 @@ func runGrant(args []string) error {
 }
 
 func run() error {
-	defaultTokenPath, tokenPathErr := authtoken.DefaultPath()
+	defaultMap := defaultPolicyMap()
 
 	var (
 		addr      = flag.String("addr", "127.0.0.1:"+DefaultPort, "TCP address to listen on")
 		sbxPath   = flag.String("sbx", "sbx", "path to the real sbx binary")
-		tokenPath = flag.String("token-file", defaultTokenPath, "file holding the shared token, created if absent")
 		workdir   = flag.String("workdir", "", "working directory for remote commands (default: current directory)")
 		verbose   = flag.Bool("verbose", false, "log at debug level")
 		allowAny  = flag.Bool("allow-any-bind", false, "permit binding a non-loopback address")
 		showVer   = flag.Bool("version", false, "print the version and exit")
-		policyMap = flag.String("policy-map", "", "policy map binding Cedar policy files to sandbox names and patterns; enabling it requires every session to present an identity token")
+		policyMap = flag.String("policy-map", defaultMap, "path or URL of the policy map binding Cedar policies to sandbox names and patterns; empty runs with no policy, letting every granted sandbox run any allowed subcommand")
 		keyPath   = flag.String("key-file", "", "file holding the identity key that verifies session tokens (default: the same file sbx-dev grant uses)")
 		allow     stringList
 		allowEnv  stringList
@@ -151,15 +204,7 @@ func run() error {
 	if flag.NArg() > 0 {
 		return fmt.Errorf("unexpected argument %q", flag.Arg(0))
 	}
-	if tokenPathErr != nil && *tokenPath == "" {
-		return tokenPathErr
-	}
 	if err := checkBind(*addr, *allowAny); err != nil {
-		return err
-	}
-
-	token, err := authtoken.LoadOrCreate(*tokenPath)
-	if err != nil {
 		return err
 	}
 
@@ -172,14 +217,21 @@ func run() error {
 	cfg := server.Config{
 		Addr:          *addr,
 		SbxPath:       *sbxPath,
-		Token:         token,
 		Workdir:       *workdir,
 		AllowCommands: allow,
 		AllowEnv:      allowEnv,
 		Logger:        log,
 	}
+	if err := configureIdentity(&cfg, *keyPath); err != nil {
+		return err
+	}
 	if *policyMap != "" {
-		if err := configurePolicy(&cfg, *policyMap, *keyPath); err != nil {
+		if err := configurePolicy(&cfg, *policyMap); err != nil {
+			if *policyMap == defaultMap {
+				// The operator did not choose this map, so the error alone would
+				// not explain why starting a server reached the network at all.
+				return fmt.Errorf("%w\n\nThis is the default policy map, read from the repository sbx-dev was built\nfrom. Pass --policy-map with a path to use your own, or --policy-map=\"\" to\nrun with no policy", err)
+			}
 			return err
 		}
 	}
@@ -209,7 +261,7 @@ func run() error {
 		log.Info(fmt.Sprintf("authorizing every command against %s", *policyMap))
 		log.Info(fmt.Sprintf("resolving commands against the catalog for sbx %s", cfg.Catalog.SbxVersion))
 	}
-	fmt.Fprint(os.Stderr, connectHint(port, *tokenPath, token))
+	fmt.Fprint(os.Stderr, connectHint(port, cfg.Authorizer != nil))
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -217,22 +269,20 @@ func run() error {
 	return srv.Serve(ctx)
 }
 
-// configurePolicy loads everything a policy decision needs. It resolves the
-// catalog here rather than leaving it to the server, so that the version it
-// describes can be reported at startup.
-func configurePolicy(cfg *server.Config, mapPath, keyPath string) error {
-	authorizer, err := authz.NewFromPolicyMap(mapPath)
-	if err != nil {
-		return err
-	}
-
+// configureIdentity loads the key that verifies session tokens and the registry
+// that retires reissued ones. Both are needed whether or not a policy is
+// configured, because a session's credential is always an identity token.
+//
+// The key is created when absent so that starting the server and granting a
+// sandbox work in either order, and both reach the same file.
+func configureIdentity(cfg *server.Config, keyPath string) error {
+	var err error
 	if keyPath == "" {
 		if keyPath, err = identity.DefaultKeyPath(); err != nil {
 			return err
 		}
 	}
-	key, err := identity.LoadOrCreateKey(keyPath)
-	if err != nil {
+	if cfg.IdentityKey, err = identity.LoadOrCreateKey(keyPath); err != nil {
 		return err
 	}
 
@@ -240,19 +290,37 @@ func configurePolicy(cfg *server.Config, mapPath, keyPath string) error {
 	if err != nil {
 		return err
 	}
-	registry, err := identity.OpenRegistry(registryPath)
+	cfg.Generations, err = identity.OpenRegistry(registryPath)
+	return err
+}
+
+// configurePolicy loads everything a policy decision needs. It resolves the
+// catalog here rather than leaving it to the server, so that the version it
+// describes can be reported at startup.
+//
+// A map that cannot be read fails startup. That matters most when the map is
+// remote: a server that came up without the rules it was told to enforce would
+// be granting more than its operator asked for.
+func configurePolicy(cfg *server.Config, mapRef string) error {
+	bindings, err := authz.LoadPolicyMap(mapRef)
 	if err != nil {
 		return err
 	}
+	if plaintext := authz.PlaintextRefs(mapRef, bindings); len(plaintext) > 0 {
+		cfg.Logger.Warn("policy is read over plaintext http, so whoever can answer or intercept these requests decides what every sandbox may do",
+			"documents", strings.Join(plaintext, " "))
+	}
 
+	authorizer, err := authz.New(bindings)
+	if err != nil {
+		return err
+	}
 	cat, err := catalog.Embedded()
 	if err != nil {
 		return err
 	}
 
 	cfg.Authorizer = authorizer
-	cfg.IdentityKey = key
-	cfg.Generations = registry
 	cfg.Catalog = cat
 	return nil
 }
@@ -281,12 +349,22 @@ func checkBind(addr string, allowAny bool) error {
 	return nil
 }
 
-func connectHint(port, tokenPath, token string) string {
+// connectHint tells an operator how to let one sandbox in. Granting comes first
+// because a sandbox reads its token at creation, so the order the steps are
+// printed in is the order they have to happen.
+func connectHint(port string, restricted bool) string {
 	var b strings.Builder
-	b.WriteString("\nTo use the sbx client from inside a sandbox:\n\n")
-	fmt.Fprintf(&b, "  sbx policy allow network localhost:%s\n", port)
-	fmt.Fprintf(&b, "  export SBX_DEV_ADDR=host.docker.internal:%s\n", port)
-	fmt.Fprintf(&b, "  export SBX_DEV_TOKEN=%s\n\n", token)
-	fmt.Fprintf(&b, "Token file: %s\n\n", tokenPath)
+	b.WriteString("\nTo let a sandbox use the sbx client, on the host:\n\n")
+	fmt.Fprintf(&b, "  sbx-dev grant SANDBOX\n")
+	fmt.Fprintf(&b, "  sbx policy allow network localhost:%s --sandbox SANDBOX\n\n", port)
+	b.WriteString("Then in the sandbox:\n\n")
+	fmt.Fprintf(&b, "  export SBX_DEV_ADDR=host.docker.internal:%s\n\n", port)
+	b.WriteString("Granting sets SBX_DEV_TOKEN inside the sandbox to a placeholder that the\n")
+	b.WriteString("egress proxy substitutes, so the sandbox never holds the token itself.\n")
+	if !restricted {
+		b.WriteString("\nPolicy is switched off, so every granted sandbox may run any subcommand.\n")
+		b.WriteString("Drop the empty --policy-map to authorize against the default policy again.\n")
+	}
+	b.WriteString("\n")
 	return b.String()
 }

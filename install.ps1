@@ -233,14 +233,17 @@ try {
         Write-Host 'Start the server on your host:'
         Write-Host '  sbx-dev --addr 127.0.0.1:7391'
         Write-Host ''
-        Write-Host 'Then allow the port for sandboxes:'
-        Write-Host '  sbx policy allow network localhost:7391'
+        Write-Host 'Then grant a sandbox and allow the port for it:'
+        Write-Host '  sbx-dev grant SANDBOX'
+        Write-Host '  sbx policy allow network localhost:7391 --sandbox SANDBOX'
     }
     if ($installedClient) {
         Write-Host ''
         Write-Host 'Point the client at the host from inside a sandbox:'
         Write-Host '  $env:SBX_DEV_ADDR = "host.docker.internal:7391"'
-        Write-Host '  $env:SBX_DEV_TOKEN = Get-Content ~/.sbx-dev/token'
+        Write-Host ''
+        Write-Host 'SBX_DEV_TOKEN is set by "sbx-dev grant" on the host; the sandbox'
+        Write-Host 'has to be granted before it is created.'
     }
 } finally {
     if (Test-Path -LiteralPath $tempDir) {

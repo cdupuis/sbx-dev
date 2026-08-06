@@ -16,10 +16,31 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/cdupuis/sbx-dev/internal/client"
+	"github.com/cdupuis/sbx-dev/internal/identity"
 	"github.com/cdupuis/sbx-dev/internal/protocol"
 )
 
-const testToken = "0123456789abcdef"
+// testKey signs the tokens these tests present. It is fixed rather than
+// generated so that testToken can be a package-level value, which keeps a test
+// with no interest in who is calling from having to mint one.
+var testKey = identity.Key(bytes.Repeat([]byte{0x2a}, 32))
+
+// testSandbox is who a session authenticates as when the test is about
+// something other than identity.
+const testSandbox = "test-sandbox"
+
+var testToken = mustMint(testKey, testSandbox, 1)
+
+// mustMint panics instead of returning an error because its inputs are
+// constants here: a failure is a mistake in the fixture, not a condition a test
+// should carry.
+func mustMint(key identity.Key, sandbox string, generation int) string {
+	token, err := key.Mint(sandbox, generation)
+	if err != nil {
+		panic(err)
+	}
+	return token
+}
 
 // fakeSbx stands in for the real sbx CLI, exposing just enough subcommands to
 // observe argument passing, stdio wiring, environment, exit codes and TTY
@@ -68,8 +89,8 @@ func startServer(t *testing.T, cfg Config) string {
 	if cfg.SbxPath == "" {
 		cfg.SbxPath = writeFakeSbx(t)
 	}
-	if cfg.Token == "" {
-		cfg.Token = testToken
+	if len(cfg.IdentityKey) == 0 {
+		cfg.IdentityKey = testKey
 	}
 	if cfg.Logger == nil {
 		cfg.Logger = slog.New(slog.DiscardHandler)
@@ -364,18 +385,18 @@ func rawSession(t *testing.T, addr string, start protocol.Start) (string, protoc
 	}
 }
 
-func TestNewRejectsMissingToken(t *testing.T) {
+func TestNewRejectsMissingIdentityKey(t *testing.T) {
 	_, err := New(Config{SbxPath: "sh"})
-	require.ErrorContains(t, err, "token is required")
+	require.ErrorContains(t, err, "identity key is required")
 }
 
 func TestNewRejectsUnknownSbxBinary(t *testing.T) {
-	_, err := New(Config{Token: testToken, SbxPath: filepath.Join(t.TempDir(), "absent")})
+	_, err := New(Config{IdentityKey: testKey, SbxPath: filepath.Join(t.TempDir(), "absent")})
 	require.ErrorContains(t, err, "locate sbx binary")
 }
 
 func TestServeRequiresListenFirst(t *testing.T) {
-	srv, err := New(Config{Token: testToken, SbxPath: "sh"})
+	srv, err := New(Config{IdentityKey: testKey, SbxPath: "sh"})
 	require.NoError(t, err)
 	require.ErrorContains(t, srv.Serve(context.Background()), "Listen must be called")
 }

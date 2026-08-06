@@ -18,9 +18,13 @@ an agent inside a sandbox can drive Docker Sandboxes on the host.
 >   been blocked, and the rule landed at *global* scope, so it applied to every
 >   other sandbox on the host too.
 >
+> Both are refused by the [policy](#policy) a server enforces by default, which
+> grants little more than reading. They are what a sandbox reaches as soon as that
+> policy is widened or switched off, so treat widening it as the decision it is.
+>
 > A coding agent acts on what it reads — a repository, an issue, a web page — so
 > assume anything it reads can reach your host. Run this only where that is
-> acceptable, and narrow it with `--allow-command`. See [Security](#security).
+> acceptable. See [Security](#security).
 
 Two binaries:
 
@@ -55,26 +59,31 @@ $env:SBX_DEV_COMPONENTS = 'server'
 irm https://raw.githubusercontent.com/cdupuis/sbx-dev/main/install.ps1 | iex
 ```
 
-Then [run it](#run-the-server-on-the-host); the first start writes the token the
-client needs. Dropping `--server` installs both binaries, which is only worth
-doing if you want a client on the host too, for testing against the server
-directly.
+Then [run it](#run-the-server-on-the-host). Dropping `--server` installs both
+binaries, which is only worth doing if you want a client on the host too, for
+testing against the server directly.
 
 ### The client, in a sandbox
 
 Use the kit. It installs the client while a sandbox is being created, allows the
 egress it needs, and points it at the host, so there is nothing to install inside
-the sandbox afterwards, and nothing to clone to get it:
+the sandbox afterwards, and nothing to clone to get it.
+
+Grant the sandbox first, then create it under that name:
 
 ```bash
-export SBX_DEV_TOKEN=$(cat ~/.sbx-dev/token)
-sbx create shell . \
-  --kit 'git+https://github.com/cdupuis/sbx-dev.git#ref=v0.3.0&dir=kit/sbx-dev' \
-  --env SBX_DEV_TOKEN
+sbx-dev grant my-sandbox
+sbx create shell . --name my-sandbox \
+  --kit 'git+https://github.com/cdupuis/sbx-dev.git#ref=v0.4.0&dir=kit/sbx-dev'
 ```
 
-Keep the reference quoted, or the shell reads the `&` before `dir=` as a request
-to run the command in the background.
+Granting is what lets the server recognise the sandbox, and it is the only way
+in: there is no shared secret to copy. The name is not decoration — the token is
+signed over it, so the grant and the `--name` have to agree. Grant before you
+create, because a sandbox picks its token up at creation.
+
+Keep the kit reference quoted, or the shell reads the `&` before `dir=` as a
+request to run the command in the background.
 
 Remote kits are gated by an allowlist that ships allowing Docker's own sources,
 so the first attempt is refused until `github.com/cdupuis/` joins it. The refusal
@@ -128,8 +137,12 @@ task build:client:all      # linux/amd64 and linux/arm64 clients for sandboxes
 sbx-dev --addr 127.0.0.1:7391
 ```
 
-On first start it generates a shared token at `~/.sbx-dev/token` and prints the
-three lines you need to set up a client.
+On first start it generates the key that signs identity tokens at
+`~/.sbx-dev/identity.key` and prints how to let a sandbox in. `sbx-dev grant`
+reads the same file, so the two work in either order.
+
+It also fetches its [default policy](#the-default) from GitHub, and will not start
+without it. Point `--policy-map` at a local file to work offline.
 
 The server refuses to bind anything but loopback unless you pass
 `--allow-any-bind`. Loopback is both sufficient and safest: when a sandbox
@@ -145,19 +158,21 @@ publish your `sbx` CLI to the LAN and buys nothing.
 The [install section](#the-client-in-a-sandbox) has the command. The kit is a v2
 mixin, so it composes with any agent rather than replacing one: it installs the
 pinned client release into `/usr/local/bin`, exports `SBX_DEV_ADDR`, and allows
-the egress those need. It leaves out the token deliberately.
+the egress those need. It carries no credential, and cannot: kit environment
+values are literal, so a token in the kit would be a secret committed to a
+repository, and a token names one sandbox while a kit is used by many.
 
-Kit environment values are literal, so a token in the kit would be a secret
-committed to a repository, and the kit credential mechanism cannot help: it
-injects secrets into HTTP headers, which does nothing for a raw TCP protocol. A
-bare `--env SBX_DEV_TOKEN` takes the value from your shell instead.
+`sbx-dev grant` supplies the credential instead. It registers the token as a
+sandbox-scoped secret, which sets `SBX_DEV_TOKEN` inside the sandbox to a
+placeholder that the egress proxy substitutes, so the token reaches the server
+without ever being readable in the sandbox.
 
 The kit allows exactly one host port, `localhost:7391`, so the sandbox can reach
 the server and nothing else on your host — not even another port on the same
 host. Read that as tidiness rather than containment: the one port it does reach
-is the host's `sbx` CLI, and the policy the kit installs is itself something the
-sandbox can rewrite through that port. `--allow-command` on the server is what
-constrains this; the allow list is not.
+is the host's `sbx` CLI, and the network policy the kit installs is itself
+something the sandbox could rewrite through that port. What actually constrains
+this is the server's [policy](#policy) and `--allow-command`, not the allow list.
 
 Running the server elsewhere means changing both `SBX_DEV_ADDR` and the
 `permissions.network.allow` entry in the kit, because a rule naming one port
@@ -177,16 +192,18 @@ repository can also name the kit by path, as `./kit/sbx-dev`, which is what
 
 A sandbox that predates the kit does not need the by-hand route: `sbx kit add`
 recreates it with the kit applied, keeping kit-owned volumes and workspace data.
+Recreating is also when a sandbox picks up its token, so grant it in the same
+pass:
 
 ```bash
-sbx kit add my-sandbox 'git+https://github.com/cdupuis/sbx-dev.git#ref=v0.3.0&dir=kit/sbx-dev'
+sbx-dev grant my-sandbox
+sbx kit add my-sandbox 'git+https://github.com/cdupuis/sbx-dev.git#ref=v0.4.0&dir=kit/sbx-dev'
 ```
 
-The swap preserves the sandbox's environment, so one created with
-`--env SBX_DEV_TOKEN` keeps its token. One created without it has no token to
-keep, and a container's environment is fixed when it is created, so put the token
-in the file the client falls back to instead: it reads `~/.sbx-dev/token` inside
-the sandbox whenever `SBX_DEV_TOKEN` is unset.
+Granting on its own has no effect until the sandbox is recreated, because a
+container's environment is fixed at creation. Rotating a token later is the
+exception: regranting reuses the same placeholder, so the substituted value
+changes without recreating anything.
 
 ### By hand
 
@@ -220,48 +237,69 @@ Or copy a locally built binary in, which needs no extra egress:
 task install:client SANDBOX=my-sandbox     # or: sbx cp ./bin/sbx-linux-arm64 my-sandbox:/usr/local/bin/sbx
 ```
 
+Point the client at the host, and give the sandbox a token. `--print-token`
+prints one instead of registering it as a secret, which is the by-hand
+equivalent:
+
+```bash
+sbx-dev grant --print-token my-sandbox      # on the host
+```
+
 Then, inside the sandbox:
 
 ```bash
 export SBX_DEV_ADDR=host.docker.internal:7391
-export SBX_DEV_TOKEN=<token from ~/.sbx-dev/token on the host>
+export SBX_DEV_TOKEN=<token printed by sbx-dev grant>
 sbx ls
 ```
+
+A sandbox that holds its own token can read it, which the secret route avoids.
+It is still no more powerful than the sandbox it names, because the name is
+signed: it cannot be edited into another sandbox's token.
 
 ## Configuration
 
 The client takes no flags of its own, so that every flag reaches the real CLI.
 It reads:
 
-| Variable              | Default                        | Purpose                                        |
-| --------------------- | ------------------------------ | ---------------------------------------------- |
-| `SBX_DEV_ADDR`        | `host.docker.internal:7391`    | Server address.                                |
-| `SBX_DEV_TOKEN`       | —                              | Shared token; preferred over the file.         |
-| `SBX_DEV_TOKEN_FILE`  | `~/.sbx-dev/token`             | Token file, read when `SBX_DEV_TOKEN` is unset. |
-| `SBX_DEV_FORWARD_ENV` | —                              | Comma-separated env var names to send along.   |
-| `SBX_DEV_NO_TTY`      | —                              | Set to any value to suppress PTY allocation.   |
-| `SBX_DEV_PRINT_VERSION` | —                            | Print the client's version and exit.           |
+| Variable                | Default                     | Purpose                                       |
+| ----------------------- | --------------------------- | --------------------------------------------- |
+| `SBX_DEV_ADDR`          | `host.docker.internal:7391` | Server address.                               |
+| `SBX_DEV_TOKEN`         | —                           | Identity token, set by `sbx-dev grant`.       |
+| `SBX_DEV_FORWARD_ENV`   | —                           | Comma-separated env var names to send along.  |
+| `SBX_DEV_NO_TTY`        | —                           | Set to any value to suppress PTY allocation.  |
+| `SBX_DEV_PRINT_VERSION` | —                           | Print the client's version and exit.          |
+
+`SBX_DEV_TOKEN` is required and usually holds a placeholder rather than the token
+itself; see [Policy](#policy).
 
 Environment variables are not forwarded by default; name them explicitly in
 `SBX_DEV_FORWARD_ENV` when a command needs them. The child process otherwise
 inherits the server's environment.
 
-Server flags: `--addr`, `--sbx`, `--token-file`, `--workdir`, `--allow-command`,
-`--allow-env`, `--allow-any-bind`, `--verbose`, `--version`, and for
-authorization `--policy-map` and `--key-file`. Run `sbx-dev --help` for details.
+Server flags: `--addr`, `--sbx`, `--workdir`, `--allow-command`, `--allow-env`,
+`--allow-any-bind`, `--verbose`, `--version`, `--policy-map` and `--key-file`.
+Run `sbx-dev --help` for details.
 
 The client reports its own version through `SBX_DEV_PRINT_VERSION` rather than a
 flag, because every argument belongs to the remote CLI.
 
 ## Security
 
-The token is the entire boundary. Anyone holding it can do everything in the
-warning at the top of this file, so treat it like an SSH key: it lives in a
-`0600` file, and the server compares it in constant time. Loopback binding
-limits *who* can present a token, not what a token permits.
+Access is granted one sandbox at a time. There is no shared secret: every session
+authenticates with a token naming a single sandbox, so nothing you hand out is
+usable by anything you did not name, and `sbx-dev grant` is the only way in.
 
-`--allow-command` is the blunt way to reduce what a token permits: it restricts
-sessions to named subcommands and rejects everything else.
+The signing key is what that rests on. Whoever holds `~/.sbx-dev/identity.key`
+can mint a token for any name, so treat it like an SSH key; it is written `0600`
+in a `0700` directory. Loopback binding limits *who* can present a token, not
+what a token permits.
+
+Two controls narrow what a granted sandbox may then do, and they answer different
+questions.
+
+`--allow-command` restricts every session to named subcommands, whoever is
+calling:
 
 ```bash
 sbx-dev --allow-command ls,ps,logs
@@ -273,16 +311,16 @@ workspace path, and `logs` still discloses whatever the agents there have
 printed. The escapes above need `create`, `exec` and `policy`, so a list that
 omits all three is the difference between reconnaissance and host access.
 
-It applies to every caller alike, though, because a shared token names nobody.
-[Policy](#policy) is the sharper instrument: it gives each sandbox its own
-identity and decides per sandbox what that identity may do.
+[Policy](#policy) is the sharper instrument, because it can tell callers apart:
+it decides per sandbox what that sandbox may do. It is on by default, so the
+escapes above are refused until you widen it.
 
 ## Policy
 
-A shared token is all-or-nothing. Policy replaces it with two questions asked in
-order: *which sandbox is this*, then *may that sandbox run this command*.
+Identity answers *which sandbox is this*. Policy answers *may that sandbox run
+this command*, and the server asks them in that order.
 
-Identity comes first. Grant each sandbox a signed token naming it:
+Every sandbox needs a grant regardless:
 
 ```bash
 sbx-dev grant orchestrator
@@ -290,17 +328,38 @@ sbx-dev grant worker-1
 ```
 
 Each token is an HMAC over the sandbox's name, so it cannot be forged or
-transplanted, and by default the sandbox never holds it: `grant` registers it as
-a sandbox-scoped secret and the egress proxy substitutes the real value into the
-sandbox's handshake. Granting again rotates the token without recreating the
-sandbox.
+transplanted between sandboxes, and by default the sandbox never holds it:
+`grant` registers it as a sandbox-scoped secret and the egress proxy substitutes
+the real value into the sandbox's handshake. Granting again rotates the token,
+retiring the previous one without recreating the sandbox.
 
-Then start the server with a policy. Turning it on makes identity mandatory: the
-shared token names no sandbox, so no rule could describe its holder, and it is
-refused rather than treated as a wildcard.
+### The default
+
+A server started with no `--policy-map` authorizes against the map in
+[`policies/`](policies), read from the `main` branch of the repository it was
+built from:
+
+```
+https://raw.githubusercontent.com/cdupuis/sbx-dev/main/policies/policy-map.yaml
+```
+
+The repository comes from the Go module path, so a fork defaults to the policies
+it ships rather than to these. What that default grants is read-only access,
+plus [the guardrails](#the-shipped-policies) that no role file can restore, so a
+server is useful on first start without being open.
+
+Three consequences worth knowing:
+
+- **Startup reads it over the network**, and fails rather than starting with
+  fewer rules than intended. Pass a path to avoid the fetch.
+- **It tracks `main`**, so whoever can push there decides what every sandbox may
+  do. Pin a tag or vendor the files locally where that matters.
+- **Policy can be switched off** with an empty value, which is the only way back
+  to an unrestricted server:
 
 ```bash
-sbx-dev --policy-map policies/policy-map.yaml
+sbx-dev --policy-map=""                        # no policy at all
+sbx-dev --policy-map policies/policy-map.yaml  # a local copy, no fetch
 ```
 
 ### The two layers
@@ -325,10 +384,41 @@ bindings:
 ```
 
 Patterns are globs over the sandbox name: `*` matches any run of characters, `?`
-a single one, and a pattern without a wildcard is an exact name. Policy paths
-resolve against the map, so the directory can be moved or checked out anywhere.
+a single one, and a pattern without a wildcard is an exact name. Policies resolve
+against the map, so the directory can be moved or checked out anywhere.
 `groups` is optional and lets a policy say `principal in SBX::Group::"workers"`
 rather than naming each sandbox.
+
+### Serving the map over http
+
+The default is fetched this way, and so is any map you point at yourself, which is
+how several hosts enforce one set of rules instead of each keeping a copy that
+drifts:
+
+```bash
+sbx-dev --policy-map https://config.example.com/sbx/policy-map.yaml
+```
+
+Resolution works the same way, one level up: a policy named `worker.cedar` in
+that map is fetched from `https://config.example.com/sbx/worker.cedar`. The same
+map therefore works from a directory or from a server without editing it. A
+binding may also name a full URL, so a local map can pull in a shared policy.
+
+What a remote map cannot do is name anything on the host reading it. References
+resolve as URLs, so `/etc/shadow` in a served map is a path on the server that
+served it, and any other scheme — `file://` in particular — is refused outright.
+
+Policies are fetched once, while the server starts, over a verified TLS
+connection when the URL is `https`. A map or policy that cannot be read fails
+startup rather than starting with fewer rules than intended, and changes to a
+served policy take effect on restart.
+
+Serving them over plaintext `http://` is allowed and warned about, because
+whoever can answer or intercept those requests decides what every sandbox may do:
+
+```
+WARN reading policy over plaintext http: http://config/policy-map.yaml
+```
 
 Every binding that matches applies, so **order does not matter** and a baseline
 bound to `*` cannot be skipped by an entry below it. Cedar decides the rest:

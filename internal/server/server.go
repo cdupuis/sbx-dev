@@ -43,8 +43,6 @@ type Config struct {
 	Addr string
 	// SbxPath is the sbx binary every session executes.
 	SbxPath string
-	// Token is the shared secret a client must present.
-	Token string
 	// Workdir is the working directory for sessions that do not request one.
 	Workdir string
 	// AllowCommands optionally restricts which sbx subcommands may run. Empty
@@ -55,12 +53,13 @@ type Config struct {
 	// sandbox, and every name here hands that sandbox control of the variable's
 	// value for a process running on the host.
 	AllowEnv []string
-	// Authorizer decides which commands a caller may run. Setting it requires
-	// every session to present a sandbox identity token: the shared token names
-	// no sandbox, so a policy could not say anything about its holder, and
-	// accepting it would leave a way past every rule.
+	// Authorizer decides which commands a caller may run. A nil Authorizer
+	// authorizes nothing, which leaves every granted sandbox able to run any
+	// subcommand AllowCommands permits.
 	Authorizer *authz.Authorizer
-	// IdentityKey verifies identity tokens. It is required alongside Authorizer.
+	// IdentityKey verifies the identity tokens sessions authenticate with. It is
+	// required: a session names the sandbox it belongs to, and without the key
+	// that claim cannot be checked.
 	IdentityKey identity.Key
 	// Generations retires tokens that have been reissued. A nil registry accepts
 	// every generation, which is the state of a server that has revoked nothing.
@@ -90,8 +89,8 @@ type Server struct {
 
 // New validates cfg and resolves the sbx binary to an absolute path.
 func New(cfg Config) (*Server, error) {
-	if cfg.Token == "" {
-		return nil, errors.New("server: token is required")
+	if len(cfg.IdentityKey) == 0 {
+		return nil, errors.New("server: an identity key is required to know which sandbox is calling")
 	}
 	if cfg.SbxPath == "" {
 		return nil, errors.New("server: sbx path is required")
@@ -123,15 +122,10 @@ func New(cfg Config) (*Server, error) {
 		cfg.Logger = slog.New(slog.DiscardHandler)
 	}
 
-	if cfg.Authorizer != nil {
-		if len(cfg.IdentityKey) == 0 {
-			return nil, errors.New("server: a policy needs an identity key to know which sandbox is calling")
-		}
-		if cfg.Catalog == nil {
-			cfg.Catalog, err = catalog.Embedded()
-			if err != nil {
-				return nil, fmt.Errorf("server: load command catalog: %w", err)
-			}
+	if cfg.Authorizer != nil && cfg.Catalog == nil {
+		cfg.Catalog, err = catalog.Embedded()
+		if err != nil {
+			return nil, fmt.Errorf("server: load command catalog: %w", err)
 		}
 	}
 

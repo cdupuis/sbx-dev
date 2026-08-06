@@ -5,8 +5,7 @@
 // work; this binary is configured entirely through the environment:
 //
 //	SBX_DEV_ADDR         server address (default host.docker.internal:7391)
-//	SBX_DEV_TOKEN        shared token, otherwise read from SBX_DEV_TOKEN_FILE
-//	SBX_DEV_TOKEN_FILE   token file (default ~/.sbx-dev/token)
+//	SBX_DEV_TOKEN        identity token naming this sandbox, from "sbx-dev grant"
 //	SBX_DEV_FORWARD_ENV  comma-separated env var names to send to the server
 //	SBX_DEV_NO_TTY       set to disable remote PTY allocation
 //	SBX_DEV_PRINT_VERSION  print this client's version and exit
@@ -20,7 +19,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/cdupuis/sbx-dev/internal/authtoken"
 	"github.com/cdupuis/sbx-dev/internal/client"
 	"github.com/cdupuis/sbx-dev/internal/protocol"
 )
@@ -42,9 +40,9 @@ func main() {
 
 	addr := envOr("SBX_DEV_ADDR", defaultAddr)
 
-	token, err := resolveToken()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "sbx: %v\n", err)
+	token := os.Getenv("SBX_DEV_TOKEN")
+	if token == "" {
+		fmt.Fprint(os.Stderr, ungrantedHint())
 		os.Exit(protocol.ExitProtocol)
 	}
 
@@ -79,19 +77,19 @@ func envOr(name, fallback string) string {
 	return fallback
 }
 
-func resolveToken() (string, error) {
-	if token := os.Getenv("SBX_DEV_TOKEN"); token != "" {
-		return token, nil
-	}
-	path, err := authtoken.DefaultPath()
-	if err != nil {
-		return "", errors.New("no token available: set SBX_DEV_TOKEN")
-	}
-	token, err := authtoken.Load(path)
-	if err != nil {
-		return "", fmt.Errorf("no token available: set SBX_DEV_TOKEN or create %s", path)
-	}
-	return token, nil
+// ungrantedHint explains an empty SBX_DEV_TOKEN. The variable is set when the
+// sandbox is created, so a sandbox that was never granted cannot fix this from
+// the inside, and the instructions are for whoever is on the host.
+func ungrantedHint() string {
+	return `sbx: this sandbox has no sbx-dev token, so it cannot be identified to the server.
+
+On the host, grant it and recreate it:
+
+  sbx-dev grant SANDBOX
+
+A sandbox's environment is fixed when it is created, so a sandbox that was
+already running when it was granted has to be recreated to pick up the token.
+`
 }
 
 func forwardedEnv() map[string]string {

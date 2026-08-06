@@ -4,26 +4,18 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/cdupuis/sbx-dev/internal/authtoken"
 	"github.com/cdupuis/sbx-dev/internal/authz"
 	"github.com/cdupuis/sbx-dev/internal/identity"
 	"github.com/cdupuis/sbx-dev/internal/resolve"
 )
 
-// caller is who a connection turned out to belong to.
+// caller is the sandbox a connection turned out to belong to.
 type caller struct {
-	peer string
-	// sandbox is set when the caller presented an identity token.
+	peer    string
 	sandbox identity.Identity
-	// operator is set when the caller presented the server's shared token, which
-	// names no sandbox.
-	operator bool
 }
 
 func (c caller) String() string {
-	if c.operator {
-		return fmt.Sprintf("the operator at %s", c.peer)
-	}
 	return fmt.Sprintf("sandbox %s at %s", c.sandbox.Sandbox, c.peer)
 }
 
@@ -47,35 +39,21 @@ func (s *Server) authenticateSession(peer, token string) (caller, error) {
 	return c, nil
 }
 
-// authenticate resolves a presented token into a caller.
+// authenticate resolves a presented token into the sandbox it names.
 //
-// An identity token is tried first so that a sandbox is always recognised as
-// itself. The shared token names no sandbox and is how a host-side operator
-// connects; it is refused outright once a policy is configured, because no rule
-// could describe its holder and accepting it would leave a way past every rule.
+// An identity token is the only credential the server accepts, so every session
+// belongs to a sandbox an operator granted by name and can be revoked on its
+// own. Nothing distinguishes a malformed token from a forged one here: both are
+// refused the same way, because telling them apart only helps the forger.
 func (s *Server) authenticate(peer, token string) (caller, error) {
-	if len(s.cfg.IdentityKey) > 0 {
-		id, err := s.cfg.IdentityKey.Verify(token)
-		switch {
-		case err == nil:
-			if s.cfg.Generations != nil && !s.cfg.Generations.Accepts(id) {
-				return caller{}, fmt.Errorf("the token for %s has been replaced", id.Sandbox)
-			}
-			return caller{peer: peer, sandbox: id}, nil
-		case errors.Is(err, identity.ErrUnauthenticated):
-			// A token that names a sandbox but carries the wrong signature is a
-			// forgery attempt, not a shared token, so it never falls through.
-			return caller{}, errors.New("invalid token")
-		}
-	}
-
-	if !authtoken.Equal(token, s.cfg.Token) {
+	id, err := s.cfg.IdentityKey.Verify(token)
+	if err != nil {
 		return caller{}, errors.New("invalid token")
 	}
-	if s.cfg.Authorizer != nil {
-		return caller{}, errors.New("this server requires a sandbox identity token; run \"sbx-dev grant\" for the sandbox")
+	if s.cfg.Generations != nil && !s.cfg.Generations.Accepts(id) {
+		return caller{}, fmt.Errorf("the token for %s has been replaced", id.Sandbox)
 	}
-	return caller{peer: peer, operator: true}, nil
+	return caller{peer: peer, sandbox: id}, nil
 }
 
 // authorize resolves the argv and asks the policy about it. A server with no

@@ -270,12 +270,15 @@ if [ -n "$installed_server" ]; then
 	info "Start the server on your host:"
 	info "  sbx-dev --addr 127.0.0.1:7391"
 	info ""
-	info "Then allow the port for sandboxes:"
-	info "  sbx policy allow network localhost:7391"
+	info "Then grant a sandbox and allow the port for it:"
+	info "  sbx-dev grant SANDBOX"
+	info "  sbx policy allow network localhost:7391 --sandbox SANDBOX"
 fi
 if [ -n "$installed_client" ]; then
 	info ""
 	info "Point the client at the host from inside a sandbox:"
 	info "  export SBX_DEV_ADDR=host.docker.internal:7391"
-	info "  export SBX_DEV_TOKEN=\$(cat ~/.sbx-dev/token)  # copy from the host"
+	info ""
+	info "SBX_DEV_TOKEN is set by \"sbx-dev grant\" on the host; the sandbox"
+	info "has to be granted before it is created."
 fi
