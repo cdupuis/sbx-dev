@@ -69,7 +69,7 @@ the sandbox afterwards, and nothing to clone to get it:
 ```bash
 export SBX_DEV_TOKEN=$(cat ~/.sbx-dev/token)
 sbx create shell . \
-  --kit 'git+https://github.com/cdupuis/sbx-dev.git#ref=v0.2.0&dir=kit/sbx-dev' \
+  --kit 'git+https://github.com/cdupuis/sbx-dev.git#ref=v0.3.0&dir=kit/sbx-dev' \
   --env SBX_DEV_TOKEN
 ```
 
@@ -179,7 +179,7 @@ A sandbox that predates the kit does not need the by-hand route: `sbx kit add`
 recreates it with the kit applied, keeping kit-owned volumes and workspace data.
 
 ```bash
-sbx kit add my-sandbox 'git+https://github.com/cdupuis/sbx-dev.git#ref=v0.2.0&dir=kit/sbx-dev'
+sbx kit add my-sandbox 'git+https://github.com/cdupuis/sbx-dev.git#ref=v0.3.0&dir=kit/sbx-dev'
 ```
 
 The swap preserves the sandbox's environment, so one created with
@@ -247,7 +247,8 @@ Environment variables are not forwarded by default; name them explicitly in
 inherits the server's environment.
 
 Server flags: `--addr`, `--sbx`, `--token-file`, `--workdir`, `--allow-command`,
-`--allow-any-bind`, `--verbose`, `--version`. Run `sbx-dev --help` for details.
+`--allow-env`, `--allow-any-bind`, `--verbose`, `--version`, and for
+authorization `--policy-map` and `--key-file`. Run `sbx-dev --help` for details.
 
 The client reports its own version through `SBX_DEV_PRINT_VERSION` rather than a
 flag, because every argument belongs to the remote CLI.
@@ -259,8 +260,8 @@ warning at the top of this file, so treat it like an SSH key: it lives in a
 `0600` file, and the server compares it in constant time. Loopback binding
 limits *who* can present a token, not what a token permits.
 
-`--allow-command` is the one control that reduces what a token permits, by
-restricting sessions to named subcommands and rejecting everything else:
+`--allow-command` is the blunt way to reduce what a token permits: it restricts
+sessions to named subcommands and rejects everything else.
 
 ```bash
 sbx-dev --allow-command ls,ps,logs
@@ -272,14 +273,178 @@ workspace path, and `logs` still discloses whatever the agents there have
 printed. The escapes above need `create`, `exec` and `policy`, so a list that
 omits all three is the difference between reconnaissance and host access.
 
+It applies to every caller alike, though, because a shared token names nobody.
+[Policy](#policy) is the sharper instrument: it gives each sandbox its own
+identity and decides per sandbox what that identity may do.
+
+## Policy
+
+A shared token is all-or-nothing. Policy replaces it with two questions asked in
+order: *which sandbox is this*, then *may that sandbox run this command*.
+
+Identity comes first. Grant each sandbox a signed token naming it:
+
+```bash
+sbx-dev grant orchestrator
+sbx-dev grant worker-1
+```
+
+Each token is an HMAC over the sandbox's name, so it cannot be forged or
+transplanted, and by default the sandbox never holds it: `grant` registers it as
+a sandbox-scoped secret and the egress proxy substitutes the real value into the
+sandbox's handshake. Granting again rotates the token without recreating the
+sandbox.
+
+Then start the server with a policy. Turning it on makes identity mandatory: the
+shared token names no sandbox, so no rule could describe its holder, and it is
+refused rather than treated as a wildcard.
+
+```bash
+sbx-dev --policy-map policies/policy-map.yaml
+```
+
+### The two layers
+
+A **policy map** says which policies apply to whom. A **policy file** says what
+those policies allow. Keeping them apart means a role is written once and handed
+to any number of sandboxes.
+
+```yaml
+# policies/policy-map.yaml
+bindings:
+  - sandboxes: "*"
+    policies: [baseline.cedar, readonly.cedar]
+
+  - sandboxes: "worker-*"
+    policies: worker.cedar
+    groups: workers
+
+  - sandboxes: orchestrator
+    policies: orchestrator.cedar
+    groups: orchestrators
+```
+
+Patterns are globs over the sandbox name: `*` matches any run of characters, `?`
+a single one, and a pattern without a wildcard is an exact name. Policy paths
+resolve against the map, so the directory can be moved or checked out anywhere.
+`groups` is optional and lets a policy say `principal in SBX::Group::"workers"`
+rather than naming each sandbox.
+
+Every binding that matches applies, so **order does not matter** and a baseline
+bound to `*` cannot be skipped by an entry below it. Cedar decides the rest:
+permits accumulate, and a forbid in any matching file beats all of them. That is
+what makes `baseline.cedar` a guardrail rather than a default — no role file can
+restore what it forbids.
+
+A sandbox that matches no binding is granted nothing, and is told exactly that,
+so a missing binding does not read as a rule that refused. A policy that should
+reach every sandbox is bound to `*`; there is no separate way to say "everyone".
+
+### The shipped policies
+
+`policies/` holds four files meant to be composed, not used alone:
+
+| File                 | Grants                                                                     |
+| -------------------- | -------------------------------------------------------------------------- |
+| `baseline.cedar`     | Nothing. Forbids the credential store, the daemon, publishing, and `--privileged`. |
+| `readonly.cedar`     | Commands that only report state.                                           |
+| `worker.cedar`       | Running commands in *itself* and copying files under the working directory. |
+| `orchestrator.cedar` | Creating, destroying, changing and running in sandboxes, confined to the working directory. |
+
+Two conditions carry most of the confinement. `context.targetsSelf` holds only
+when every sandbox a command names is the caller, so a worker cannot reach a
+sibling — not even by naming itself alongside one. `context.hostPathsUnderWorkdir`
+holds only when every host path lies under the directory `sbx-dev` runs in, which
+is what keeps `sbx create` from mounting, and `sbx cp` from reading, the rest of
+the filesystem. Both are computed from the parse the server already performed, so
+neither can be talked around with `..` or a relative path.
+
+### Writing rules
+
+Policies are [Cedar](https://www.cedarpolicy.com). A request is the calling
+sandbox as principal, the command as action, the sandbox it acts on (or the host)
+as resource, and the parsed command line as context.
+
+Actions belong to **capability groups** — `read`, `createSandbox`,
+`destroySandbox`, `changeSandbox`, `runInSandbox`, `touchHostFiles`,
+`writePolicy`, `writeSecrets`, `inspectSecrets`, `controlDaemon`,
+`publishArtifacts` — so a rule grants a capability rather than a list of command
+names and keeps meaning what it meant as sbx grows. A command in no group can
+only be granted by name, which is why a new sbx command is never swept in by
+accident.
+
+```cedar
+// A capability, granted to a group.
+permit (
+    principal in SBX::Group::"workers",
+    action in SBX::Action::"runInSandbox",
+    resource
+) when { context.targetsSelf };
+
+// A pattern, without a group.
+permit (
+    principal,
+    action in SBX::Action::"read",
+    resource
+) when { principal.name like "probe-*" };
+
+// One command by name, held for confirmation rather than simply taken.
+@requireApproval("a new network rule changes what a sandbox can reach")
+permit (
+    principal in SBX::Group::"orchestrators",
+    action == SBX::Action::"policy allow network",
+    resource
+);
+```
+
+An approved-but-unconfirmed request is reported as needing approval and is not
+run, so `@requireApproval` withholds a permit rather than granting it quietly.
+
+### The vocabulary
+
+`policies/sbx.cedarschema` is the schema: every entity type, every action sbx
+offers with the groups it belongs to, and every context attribute with its type.
+It is generated from the embedded command catalog, so it cannot claim an action
+sbx does not have or omit one it does. Regenerate it with `task policy:schema`
+after regenerating the catalog.
+
+The schema is checked, not decorative. Tests parse it, confirm it matches the
+catalog, confirm it describes exactly the attributes a real request carries, and
+type-check every shipped policy against it in strict mode — so a rule naming an
+attribute or action that does not exist fails the build instead of silently never
+matching.
+
+The one gap is `context.flagValues`, which holds each flag's value keyed by flag
+name. Cedar records have fixed attributes and those keys depend on which command
+ran, so the schema cannot type it. Policies may still read it:
+
+```cedar
+forbid (principal, action == SBX::Action::"exec", resource)
+when { context.flagValues has user && context.flagValues.user == "root" };
+```
+
 ## Protocol
 
-A session is one TCP connection: a 5-byte magic-and-version handshake, a `start`
-frame carrying the arguments and terminal state, then length-prefixed frames
-multiplexing stdin, stdout, stderr, window resizes and signals, ending with an
-`exit` frame carrying the command's status. Frames are capped at 1 MiB.
+A session is two connections to the same port, and the server tells them apart
+by their opening bytes.
+
+The first is an HTTP `POST /v1/session` carrying the caller's token in an
+`Sbx-Dev-Token` header, answered with a single-use ticket that expires in 30
+seconds. The credential travels as an HTTP header because that is the only place
+a sandbox's egress proxy can substitute a secret, which is what lets the sandbox
+hold a placeholder and never the token itself.
+
+The second is the session: a 5-byte magic-and-version handshake, a `start` frame
+carrying the ticket, the arguments and the terminal state, then length-prefixed
+frames multiplexing stdin, stdout, stderr, window resizes and signals, ending
+with an `exit` frame carrying the command's status. Frames are capped at 1 MiB.
 Disconnecting kills the remote process group, so a dropped connection never
 leaves work running unattended.
+
+The split exists because the two need different things: substitution reaches
+headers only, and a session needs a bidirectional stream that an HTTP request
+through a proxy would buffer. A ticket is refused by the handshake and consumed
+by the session, so it cannot be spent twice or traded for another.
 
 ## Releasing
 

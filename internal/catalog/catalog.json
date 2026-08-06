@@ -1,0 +1,2966 @@
+{
+  "sbxVersion": "v0.38.0-rc1-114-g62d45b6fb.m",
+  "commands": [
+    {
+      "path": null,
+      "hasSubcommands": true,
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        }
+      ]
+    },
+    {
+      "path": [
+        "completion"
+      ],
+      "hasSubcommands": true,
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        }
+      ]
+    },
+    {
+      "path": [
+        "completion",
+        "bash"
+      ],
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        },
+        {
+          "name": "no-descriptions"
+        }
+      ]
+    },
+    {
+      "path": [
+        "completion",
+        "fish"
+      ],
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        },
+        {
+          "name": "no-descriptions"
+        }
+      ]
+    },
+    {
+      "path": [
+        "completion",
+        "powershell"
+      ],
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        },
+        {
+          "name": "no-descriptions"
+        }
+      ]
+    },
+    {
+      "path": [
+        "completion",
+        "zsh"
+      ],
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        },
+        {
+          "name": "no-descriptions"
+        }
+      ]
+    },
+    {
+      "path": [
+        "cp"
+      ],
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "follow-link",
+          "shorthand": "L"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        }
+      ],
+      "positionals": [
+        {
+          "name": "SRC",
+          "kind": "path"
+        },
+        {
+          "name": "DST",
+          "kind": "path"
+        }
+      ]
+    },
+    {
+      "path": [
+        "create"
+      ],
+      "hasSubcommands": true,
+      "flags": [
+        {
+          "name": "clone"
+        },
+        {
+          "name": "cpus",
+          "takesValue": true
+        },
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "deny-network",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "env",
+          "shorthand": "e",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "env-file",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        },
+        {
+          "name": "kit",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "memory",
+          "shorthand": "m",
+          "takesValue": true
+        },
+        {
+          "name": "name",
+          "takesValue": true
+        },
+        {
+          "name": "publish",
+          "shorthand": "p",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "quiet",
+          "shorthand": "q"
+        },
+        {
+          "name": "template",
+          "shorthand": "t",
+          "takesValue": true
+        }
+      ],
+      "positionals": [
+        {
+          "name": "AGENT",
+          "kind": "other"
+        },
+        {
+          "name": "PATH",
+          "kind": "path"
+        },
+        {
+          "name": "PATH",
+          "kind": "path",
+          "optional": true,
+          "variadic": true
+        }
+      ]
+    },
+    {
+      "path": [
+        "create",
+        "claude"
+      ],
+      "flags": [
+        {
+          "name": "clone"
+        },
+        {
+          "name": "cpus",
+          "takesValue": true
+        },
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "deny-network",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "env",
+          "shorthand": "e",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "env-file",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        },
+        {
+          "name": "kit",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "memory",
+          "shorthand": "m",
+          "takesValue": true
+        },
+        {
+          "name": "name",
+          "takesValue": true
+        },
+        {
+          "name": "publish",
+          "shorthand": "p",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "quiet",
+          "shorthand": "q"
+        },
+        {
+          "name": "template",
+          "shorthand": "t",
+          "takesValue": true
+        }
+      ],
+      "positionals": [
+        {
+          "name": "PATH",
+          "kind": "path"
+        },
+        {
+          "name": "PATH",
+          "kind": "path",
+          "optional": true,
+          "variadic": true
+        }
+      ]
+    },
+    {
+      "path": [
+        "create",
+        "codex"
+      ],
+      "flags": [
+        {
+          "name": "clone"
+        },
+        {
+          "name": "cpus",
+          "takesValue": true
+        },
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "deny-network",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "env",
+          "shorthand": "e",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "env-file",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        },
+        {
+          "name": "kit",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "memory",
+          "shorthand": "m",
+          "takesValue": true
+        },
+        {
+          "name": "name",
+          "takesValue": true
+        },
+        {
+          "name": "publish",
+          "shorthand": "p",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "quiet",
+          "shorthand": "q"
+        },
+        {
+          "name": "template",
+          "shorthand": "t",
+          "takesValue": true
+        }
+      ],
+      "positionals": [
+        {
+          "name": "PATH",
+          "kind": "path"
+        },
+        {
+          "name": "PATH",
+          "kind": "path",
+          "optional": true,
+          "variadic": true
+        }
+      ]
+    },
+    {
+      "path": [
+        "create",
+        "copilot"
+      ],
+      "flags": [
+        {
+          "name": "clone"
+        },
+        {
+          "name": "cpus",
+          "takesValue": true
+        },
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "deny-network",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "env",
+          "shorthand": "e",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "env-file",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        },
+        {
+          "name": "kit",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "memory",
+          "shorthand": "m",
+          "takesValue": true
+        },
+        {
+          "name": "name",
+          "takesValue": true
+        },
+        {
+          "name": "publish",
+          "shorthand": "p",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "quiet",
+          "shorthand": "q"
+        },
+        {
+          "name": "template",
+          "shorthand": "t",
+          "takesValue": true
+        }
+      ],
+      "positionals": [
+        {
+          "name": "PATH",
+          "kind": "path"
+        },
+        {
+          "name": "PATH",
+          "kind": "path",
+          "optional": true,
+          "variadic": true
+        }
+      ]
+    },
+    {
+      "path": [
+        "create",
+        "cursor"
+      ],
+      "flags": [
+        {
+          "name": "clone"
+        },
+        {
+          "name": "cpus",
+          "takesValue": true
+        },
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "deny-network",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "env",
+          "shorthand": "e",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "env-file",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        },
+        {
+          "name": "kit",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "memory",
+          "shorthand": "m",
+          "takesValue": true
+        },
+        {
+          "name": "name",
+          "takesValue": true
+        },
+        {
+          "name": "publish",
+          "shorthand": "p",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "quiet",
+          "shorthand": "q"
+        },
+        {
+          "name": "template",
+          "shorthand": "t",
+          "takesValue": true
+        }
+      ],
+      "positionals": [
+        {
+          "name": "PATH",
+          "kind": "path"
+        },
+        {
+          "name": "PATH",
+          "kind": "path",
+          "optional": true,
+          "variadic": true
+        }
+      ]
+    },
+    {
+      "path": [
+        "create",
+        "docker-agent"
+      ],
+      "flags": [
+        {
+          "name": "clone"
+        },
+        {
+          "name": "cpus",
+          "takesValue": true
+        },
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "deny-network",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "env",
+          "shorthand": "e",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "env-file",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        },
+        {
+          "name": "kit",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "memory",
+          "shorthand": "m",
+          "takesValue": true
+        },
+        {
+          "name": "name",
+          "takesValue": true
+        },
+        {
+          "name": "publish",
+          "shorthand": "p",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "quiet",
+          "shorthand": "q"
+        },
+        {
+          "name": "template",
+          "shorthand": "t",
+          "takesValue": true
+        }
+      ],
+      "positionals": [
+        {
+          "name": "PATH",
+          "kind": "path"
+        },
+        {
+          "name": "PATH",
+          "kind": "path",
+          "optional": true,
+          "variadic": true
+        }
+      ]
+    },
+    {
+      "path": [
+        "create",
+        "droid"
+      ],
+      "flags": [
+        {
+          "name": "clone"
+        },
+        {
+          "name": "cpus",
+          "takesValue": true
+        },
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "deny-network",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "env",
+          "shorthand": "e",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "env-file",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        },
+        {
+          "name": "kit",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "memory",
+          "shorthand": "m",
+          "takesValue": true
+        },
+        {
+          "name": "name",
+          "takesValue": true
+        },
+        {
+          "name": "publish",
+          "shorthand": "p",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "quiet",
+          "shorthand": "q"
+        },
+        {
+          "name": "template",
+          "shorthand": "t",
+          "takesValue": true
+        }
+      ],
+      "positionals": [
+        {
+          "name": "PATH",
+          "kind": "path"
+        },
+        {
+          "name": "PATH",
+          "kind": "path",
+          "optional": true,
+          "variadic": true
+        }
+      ]
+    },
+    {
+      "path": [
+        "create",
+        "gemini"
+      ],
+      "flags": [
+        {
+          "name": "clone"
+        },
+        {
+          "name": "cpus",
+          "takesValue": true
+        },
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "deny-network",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "env",
+          "shorthand": "e",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "env-file",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        },
+        {
+          "name": "kit",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "memory",
+          "shorthand": "m",
+          "takesValue": true
+        },
+        {
+          "name": "name",
+          "takesValue": true
+        },
+        {
+          "name": "publish",
+          "shorthand": "p",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "quiet",
+          "shorthand": "q"
+        },
+        {
+          "name": "template",
+          "shorthand": "t",
+          "takesValue": true
+        }
+      ],
+      "positionals": [
+        {
+          "name": "PATH",
+          "kind": "path"
+        },
+        {
+          "name": "PATH",
+          "kind": "path",
+          "optional": true,
+          "variadic": true
+        }
+      ]
+    },
+    {
+      "path": [
+        "create",
+        "kiro"
+      ],
+      "flags": [
+        {
+          "name": "clone"
+        },
+        {
+          "name": "cpus",
+          "takesValue": true
+        },
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "deny-network",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "env",
+          "shorthand": "e",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "env-file",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        },
+        {
+          "name": "kit",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "memory",
+          "shorthand": "m",
+          "takesValue": true
+        },
+        {
+          "name": "name",
+          "takesValue": true
+        },
+        {
+          "name": "publish",
+          "shorthand": "p",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "quiet",
+          "shorthand": "q"
+        },
+        {
+          "name": "template",
+          "shorthand": "t",
+          "takesValue": true
+        }
+      ],
+      "positionals": [
+        {
+          "name": "PATH",
+          "kind": "path"
+        },
+        {
+          "name": "PATH",
+          "kind": "path",
+          "optional": true,
+          "variadic": true
+        }
+      ]
+    },
+    {
+      "path": [
+        "create",
+        "opencode"
+      ],
+      "flags": [
+        {
+          "name": "clone"
+        },
+        {
+          "name": "cpus",
+          "takesValue": true
+        },
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "deny-network",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "env",
+          "shorthand": "e",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "env-file",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        },
+        {
+          "name": "kit",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "memory",
+          "shorthand": "m",
+          "takesValue": true
+        },
+        {
+          "name": "name",
+          "takesValue": true
+        },
+        {
+          "name": "publish",
+          "shorthand": "p",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "quiet",
+          "shorthand": "q"
+        },
+        {
+          "name": "template",
+          "shorthand": "t",
+          "takesValue": true
+        }
+      ],
+      "positionals": [
+        {
+          "name": "PATH",
+          "kind": "path"
+        },
+        {
+          "name": "PATH",
+          "kind": "path",
+          "optional": true,
+          "variadic": true
+        }
+      ]
+    },
+    {
+      "path": [
+        "create",
+        "shell"
+      ],
+      "flags": [
+        {
+          "name": "clone"
+        },
+        {
+          "name": "cpus",
+          "takesValue": true
+        },
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "deny-network",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "env",
+          "shorthand": "e",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "env-file",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        },
+        {
+          "name": "kit",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "memory",
+          "shorthand": "m",
+          "takesValue": true
+        },
+        {
+          "name": "name",
+          "takesValue": true
+        },
+        {
+          "name": "publish",
+          "shorthand": "p",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "quiet",
+          "shorthand": "q"
+        },
+        {
+          "name": "template",
+          "shorthand": "t",
+          "takesValue": true
+        }
+      ],
+      "positionals": [
+        {
+          "name": "PATH",
+          "kind": "path"
+        },
+        {
+          "name": "PATH",
+          "kind": "path",
+          "optional": true,
+          "variadic": true
+        }
+      ]
+    },
+    {
+      "path": [
+        "daemon"
+      ],
+      "hasSubcommands": true,
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        }
+      ]
+    },
+    {
+      "path": [
+        "daemon",
+        "log-level"
+      ],
+      "hasSubcommands": true,
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        }
+      ]
+    },
+    {
+      "path": [
+        "daemon",
+        "log-level",
+        "set"
+      ],
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        }
+      ],
+      "positionals": [
+        {
+          "name": "TARGET",
+          "kind": "other"
+        },
+        {
+          "name": "LEVEL",
+          "kind": "other"
+        }
+      ]
+    },
+    {
+      "path": [
+        "daemon",
+        "restart"
+      ],
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        }
+      ]
+    },
+    {
+      "path": [
+        "daemon",
+        "start"
+      ],
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "detach",
+          "shorthand": "d"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        },
+        {
+          "name": "policy",
+          "takesValue": true
+        }
+      ]
+    },
+    {
+      "path": [
+        "daemon",
+        "status"
+      ],
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        },
+        {
+          "name": "json"
+        }
+      ]
+    },
+    {
+      "path": [
+        "daemon",
+        "stop"
+      ],
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        }
+      ]
+    },
+    {
+      "path": [
+        "diagnose"
+      ],
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        },
+        {
+          "name": "output",
+          "shorthand": "o",
+          "takesValue": true
+        },
+        {
+          "name": "upload"
+        }
+      ]
+    },
+    {
+      "path": [
+        "exec"
+      ],
+      "stopFlagsAtFirstPositional": true,
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "detach",
+          "shorthand": "d"
+        },
+        {
+          "name": "detach-keys",
+          "takesValue": true
+        },
+        {
+          "name": "env",
+          "shorthand": "e",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "env-file",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        },
+        {
+          "name": "interactive",
+          "shorthand": "i"
+        },
+        {
+          "name": "privileged"
+        },
+        {
+          "name": "tty",
+          "shorthand": "t"
+        },
+        {
+          "name": "user",
+          "shorthand": "u",
+          "takesValue": true
+        },
+        {
+          "name": "workdir",
+          "shorthand": "w",
+          "takesValue": true
+        }
+      ],
+      "positionals": [
+        {
+          "name": "SANDBOX",
+          "kind": "sandbox"
+        },
+        {
+          "name": "COMMAND",
+          "kind": "command"
+        },
+        {
+          "name": "ARG",
+          "kind": "command",
+          "optional": true,
+          "variadic": true
+        }
+      ]
+    },
+    {
+      "path": [
+        "kit"
+      ],
+      "hasSubcommands": true,
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        }
+      ]
+    },
+    {
+      "path": [
+        "kit",
+        "add"
+      ],
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        }
+      ],
+      "positionals": [
+        {
+          "name": "SANDBOX",
+          "kind": "sandbox"
+        },
+        {
+          "name": "REFERENCE",
+          "kind": "reference"
+        }
+      ]
+    },
+    {
+      "path": [
+        "kit",
+        "inspect"
+      ],
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        },
+        {
+          "name": "json"
+        }
+      ],
+      "positionals": [
+        {
+          "name": "REFERENCE",
+          "kind": "reference"
+        }
+      ]
+    },
+    {
+      "path": [
+        "kit",
+        "pack"
+      ],
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        },
+        {
+          "name": "output",
+          "shorthand": "o",
+          "takesValue": true
+        }
+      ],
+      "positionals": [
+        {
+          "name": "DIRECTORY",
+          "kind": "path"
+        }
+      ]
+    },
+    {
+      "path": [
+        "kit",
+        "provenance"
+      ],
+      "flags": [
+        {
+          "name": "certificate-identity",
+          "takesValue": true
+        },
+        {
+          "name": "certificate-identity-regexp",
+          "takesValue": true
+        },
+        {
+          "name": "certificate-oidc-issuer",
+          "takesValue": true
+        },
+        {
+          "name": "certificate-oidc-issuer-regexp",
+          "takesValue": true
+        },
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        },
+        {
+          "name": "insecure-ignore-tlog"
+        },
+        {
+          "name": "key",
+          "takesValue": true
+        }
+      ],
+      "positionals": [
+        {
+          "name": "REFERENCE",
+          "kind": "reference"
+        }
+      ]
+    },
+    {
+      "path": [
+        "kit",
+        "pull"
+      ],
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        },
+        {
+          "name": "output",
+          "shorthand": "o",
+          "takesValue": true
+        }
+      ],
+      "positionals": [
+        {
+          "name": "REFERENCE",
+          "kind": "reference"
+        }
+      ]
+    },
+    {
+      "path": [
+        "kit",
+        "push"
+      ],
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        },
+        {
+          "name": "identity-token",
+          "takesValue": true
+        },
+        {
+          "name": "identity-token-file",
+          "takesValue": true
+        },
+        {
+          "name": "key",
+          "takesValue": true
+        },
+        {
+          "name": "sign"
+        },
+        {
+          "name": "tlog-upload"
+        }
+      ],
+      "positionals": [
+        {
+          "name": "DIRECTORY",
+          "kind": "path"
+        },
+        {
+          "name": "REFERENCE",
+          "kind": "reference"
+        }
+      ]
+    },
+    {
+      "path": [
+        "kit",
+        "sign"
+      ],
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        },
+        {
+          "name": "identity-token",
+          "takesValue": true
+        },
+        {
+          "name": "identity-token-file",
+          "takesValue": true
+        },
+        {
+          "name": "key",
+          "takesValue": true
+        },
+        {
+          "name": "tlog-upload"
+        }
+      ],
+      "positionals": [
+        {
+          "name": "REFERENCE",
+          "kind": "reference"
+        }
+      ]
+    },
+    {
+      "path": [
+        "kit",
+        "validate"
+      ],
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        }
+      ],
+      "positionals": [
+        {
+          "name": "REFERENCE",
+          "kind": "reference"
+        }
+      ]
+    },
+    {
+      "path": [
+        "kit",
+        "verify"
+      ],
+      "flags": [
+        {
+          "name": "certificate-identity",
+          "takesValue": true
+        },
+        {
+          "name": "certificate-identity-regexp",
+          "takesValue": true
+        },
+        {
+          "name": "certificate-oidc-issuer",
+          "takesValue": true
+        },
+        {
+          "name": "certificate-oidc-issuer-regexp",
+          "takesValue": true
+        },
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        },
+        {
+          "name": "insecure-ignore-tlog"
+        },
+        {
+          "name": "key",
+          "takesValue": true
+        }
+      ],
+      "positionals": [
+        {
+          "name": "REFERENCE",
+          "kind": "reference"
+        }
+      ]
+    },
+    {
+      "path": [
+        "login"
+      ],
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        },
+        {
+          "name": "password-stdin"
+        },
+        {
+          "name": "username",
+          "takesValue": true
+        }
+      ]
+    },
+    {
+      "path": [
+        "logout"
+      ],
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        },
+        {
+          "name": "yes",
+          "shorthand": "y"
+        }
+      ]
+    },
+    {
+      "path": [
+        "ls"
+      ],
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        },
+        {
+          "name": "json"
+        },
+        {
+          "name": "quiet",
+          "shorthand": "q"
+        }
+      ]
+    },
+    {
+      "path": [
+        "mcp"
+      ],
+      "hasSubcommands": true,
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        }
+      ]
+    },
+    {
+      "path": [
+        "mcp",
+        "add"
+      ],
+      "flags": [
+        {
+          "name": "args",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "client-id",
+          "takesValue": true
+        },
+        {
+          "name": "command",
+          "takesValue": true
+        },
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "dir",
+          "takesValue": true
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        },
+        {
+          "name": "local"
+        },
+        {
+          "name": "oauth-authorization-server",
+          "takesValue": true
+        },
+        {
+          "name": "scope",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "skip-ssrf-check"
+        },
+        {
+          "name": "skip_auth"
+        },
+        {
+          "name": "url",
+          "takesValue": true
+        }
+      ],
+      "positionals": [
+        {
+          "name": "NAME",
+          "kind": "other"
+        }
+      ]
+    },
+    {
+      "path": [
+        "mcp",
+        "auth"
+      ],
+      "hasSubcommands": true,
+      "flags": [
+        {
+          "name": "all"
+        },
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "format",
+          "takesValue": true
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        },
+        {
+          "name": "scope",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "verbose"
+        }
+      ],
+      "positionals": [
+        {
+          "name": "SERVER_NAME",
+          "kind": "other",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "path": [
+        "mcp",
+        "auth",
+        "rm"
+      ],
+      "flags": [
+        {
+          "name": "all"
+        },
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "format",
+          "takesValue": true
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        }
+      ],
+      "positionals": [
+        {
+          "name": "SERVER_NAME",
+          "kind": "other",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "path": [
+        "mcp",
+        "auth",
+        "status"
+      ],
+      "flags": [
+        {
+          "name": "all"
+        },
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "format",
+          "takesValue": true
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        }
+      ],
+      "positionals": [
+        {
+          "name": "SERVER_NAME",
+          "kind": "other",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "path": [
+        "mcp",
+        "inspect"
+      ],
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        }
+      ],
+      "positionals": [
+        {
+          "name": "NAME",
+          "kind": "other"
+        }
+      ]
+    },
+    {
+      "path": [
+        "mcp",
+        "load"
+      ],
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        },
+        {
+          "name": "sandbox",
+          "takesValue": true
+        }
+      ],
+      "positionals": [
+        {
+          "name": "NAME",
+          "kind": "other"
+        },
+        {
+          "name": "__SANDBOX",
+          "kind": "other"
+        },
+        {
+          "name": "SANDBOX",
+          "kind": "sandbox"
+        }
+      ]
+    },
+    {
+      "path": [
+        "mcp",
+        "ls"
+      ],
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        }
+      ]
+    },
+    {
+      "path": [
+        "mcp",
+        "rm"
+      ],
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        }
+      ],
+      "positionals": [
+        {
+          "name": "NAME",
+          "kind": "other"
+        }
+      ]
+    },
+    {
+      "path": [
+        "policy"
+      ],
+      "hasSubcommands": true,
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        }
+      ]
+    },
+    {
+      "path": [
+        "policy",
+        "allow"
+      ],
+      "hasSubcommands": true,
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        }
+      ]
+    },
+    {
+      "path": [
+        "policy",
+        "allow",
+        "network"
+      ],
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        },
+        {
+          "name": "sandbox",
+          "takesValue": true
+        }
+      ],
+      "positionals": [
+        {
+          "name": "RESOURCES",
+          "kind": "network"
+        }
+      ]
+    },
+    {
+      "path": [
+        "policy",
+        "check"
+      ],
+      "hasSubcommands": true,
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        }
+      ]
+    },
+    {
+      "path": [
+        "policy",
+        "check",
+        "network"
+      ],
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        },
+        {
+          "name": "json"
+        },
+        {
+          "name": "sandbox",
+          "takesValue": true
+        },
+        {
+          "name": "verbose"
+        }
+      ],
+      "positionals": [
+        {
+          "name": "TARGET",
+          "kind": "network"
+        }
+      ]
+    },
+    {
+      "path": [
+        "policy",
+        "deny"
+      ],
+      "hasSubcommands": true,
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        }
+      ]
+    },
+    {
+      "path": [
+        "policy",
+        "deny",
+        "network"
+      ],
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        },
+        {
+          "name": "sandbox",
+          "takesValue": true
+        }
+      ],
+      "positionals": [
+        {
+          "name": "RESOURCES",
+          "kind": "network"
+        }
+      ]
+    },
+    {
+      "path": [
+        "policy",
+        "init"
+      ],
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        }
+      ],
+      "positionals": [
+        {
+          "name": "CHOICE",
+          "kind": "other",
+          "choices": [
+            "allow-all",
+            "balanced",
+            "deny-all"
+          ]
+        }
+      ]
+    },
+    {
+      "path": [
+        "policy",
+        "inspect"
+      ],
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        }
+      ],
+      "positionals": [
+        {
+          "name": "POLICY_OR_RULE",
+          "kind": "other"
+        }
+      ]
+    },
+    {
+      "path": [
+        "policy",
+        "log"
+      ],
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        },
+        {
+          "name": "json"
+        },
+        {
+          "name": "limit",
+          "takesValue": true
+        },
+        {
+          "name": "quiet",
+          "shorthand": "q"
+        },
+        {
+          "name": "type",
+          "takesValue": true
+        }
+      ],
+      "positionals": [
+        {
+          "name": "SANDBOX",
+          "kind": "sandbox",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "path": [
+        "policy",
+        "ls"
+      ],
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "decision",
+          "takesValue": true
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        },
+        {
+          "name": "include-inactive"
+        },
+        {
+          "name": "json"
+        },
+        {
+          "name": "source",
+          "takesValue": true
+        },
+        {
+          "name": "type",
+          "takesValue": true
+        },
+        {
+          "name": "wide"
+        }
+      ],
+      "positionals": [
+        {
+          "name": "SANDBOX",
+          "kind": "sandbox",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "path": [
+        "policy",
+        "reset"
+      ],
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "force",
+          "shorthand": "f"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        }
+      ]
+    },
+    {
+      "path": [
+        "policy",
+        "rm"
+      ],
+      "hasSubcommands": true,
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        }
+      ]
+    },
+    {
+      "path": [
+        "policy",
+        "rm",
+        "network"
+      ],
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        },
+        {
+          "name": "id",
+          "takesValue": true
+        },
+        {
+          "name": "resource",
+          "takesValue": true
+        },
+        {
+          "name": "sandbox",
+          "takesValue": true
+        }
+      ]
+    },
+    {
+      "path": [
+        "ports"
+      ],
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        },
+        {
+          "name": "json"
+        },
+        {
+          "name": "publish",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "unpublish",
+          "takesValue": true,
+          "repeatable": true
+        }
+      ],
+      "positionals": [
+        {
+          "name": "SANDBOX",
+          "kind": "sandbox"
+        }
+      ]
+    },
+    {
+      "path": [
+        "prune"
+      ],
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "dry-run"
+        },
+        {
+          "name": "filter",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "force",
+          "shorthand": "f"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        }
+      ]
+    },
+    {
+      "path": [
+        "reset"
+      ],
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "force",
+          "shorthand": "f"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        },
+        {
+          "name": "preserve-secrets"
+        }
+      ]
+    },
+    {
+      "path": [
+        "rm"
+      ],
+      "flags": [
+        {
+          "name": "all"
+        },
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "force",
+          "shorthand": "f"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        }
+      ],
+      "positionals": [
+        {
+          "name": "SANDBOX",
+          "kind": "sandbox",
+          "optional": true,
+          "variadic": true
+        }
+      ]
+    },
+    {
+      "path": [
+        "run"
+      ],
+      "passThrough": true,
+      "flags": [
+        {
+          "name": "clone"
+        },
+        {
+          "name": "cpus",
+          "takesValue": true
+        },
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "deny-network",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "env",
+          "shorthand": "e",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "env-file",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        },
+        {
+          "name": "kit",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "memory",
+          "shorthand": "m",
+          "takesValue": true
+        },
+        {
+          "name": "name",
+          "takesValue": true
+        },
+        {
+          "name": "publish",
+          "shorthand": "p",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "template",
+          "shorthand": "t",
+          "takesValue": true
+        }
+      ],
+      "positionals": [
+        {
+          "name": "AGENT",
+          "kind": "other",
+          "optional": true
+        },
+        {
+          "name": "PATH",
+          "kind": "path",
+          "optional": true,
+          "variadic": true
+        }
+      ]
+    },
+    {
+      "path": [
+        "secret"
+      ],
+      "hasSubcommands": true,
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        }
+      ]
+    },
+    {
+      "path": [
+        "secret",
+        "import"
+      ],
+      "flags": [
+        {
+          "name": "all"
+        },
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "dry-run"
+        },
+        {
+          "name": "force",
+          "shorthand": "f"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        }
+      ],
+      "positionals": [
+        {
+          "name": "SERVICE",
+          "kind": "other",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "path": [
+        "secret",
+        "ls"
+      ],
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "global",
+          "shorthand": "g"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        },
+        {
+          "name": "sandbox",
+          "takesValue": true
+        },
+        {
+          "name": "service",
+          "takesValue": true
+        }
+      ]
+    },
+    {
+      "path": [
+        "secret",
+        "rm"
+      ],
+      "flags": [
+        {
+          "name": "all-sandboxes"
+        },
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "force",
+          "shorthand": "f"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        },
+        {
+          "name": "registry",
+          "takesValue": true
+        },
+        {
+          "name": "sandbox",
+          "takesValue": true
+        }
+      ],
+      "positionals": [
+        {
+          "name": "SERVICE",
+          "kind": "other",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "path": [
+        "secret",
+        "set-custom"
+      ],
+      "flags": [
+        {
+          "name": "command",
+          "takesValue": true
+        },
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "env",
+          "takesValue": true
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        },
+        {
+          "name": "host",
+          "takesValue": true,
+          "repeatable": true
+        },
+        {
+          "name": "no-verify"
+        },
+        {
+          "name": "placeholder",
+          "takesValue": true
+        },
+        {
+          "name": "ref",
+          "takesValue": true
+        },
+        {
+          "name": "refresh",
+          "takesValue": true
+        },
+        {
+          "name": "sandbox",
+          "takesValue": true
+        },
+        {
+          "name": "show-error"
+        },
+        {
+          "name": "token",
+          "shorthand": "t",
+          "takesValue": true
+        },
+        {
+          "name": "value",
+          "takesValue": true
+        }
+      ]
+    },
+    {
+      "path": [
+        "secret",
+        "set"
+      ],
+      "flags": [
+        {
+          "name": "all-sandboxes"
+        },
+        {
+          "name": "command",
+          "takesValue": true
+        },
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "force",
+          "shorthand": "f"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        },
+        {
+          "name": "no-verify"
+        },
+        {
+          "name": "oauth"
+        },
+        {
+          "name": "password-stdin"
+        },
+        {
+          "name": "ref",
+          "takesValue": true
+        },
+        {
+          "name": "refresh",
+          "takesValue": true
+        },
+        {
+          "name": "registry",
+          "takesValue": true
+        },
+        {
+          "name": "sandbox",
+          "takesValue": true
+        },
+        {
+          "name": "show-error"
+        },
+        {
+          "name": "token",
+          "shorthand": "t",
+          "takesValue": true
+        },
+        {
+          "name": "username",
+          "takesValue": true
+        }
+      ],
+      "positionals": [
+        {
+          "name": "SERVICE",
+          "kind": "other",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "path": [
+        "setup"
+      ],
+      "hasSubcommands": true,
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        }
+      ]
+    },
+    {
+      "path": [
+        "setup",
+        "ssh"
+      ],
+      "hasSubcommands": true,
+      "flags": [
+        {
+          "name": "alias",
+          "takesValue": true
+        },
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        }
+      ]
+    },
+    {
+      "path": [
+        "setup",
+        "ssh",
+        "remove"
+      ],
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        }
+      ]
+    },
+    {
+      "path": [
+        "skills"
+      ],
+      "hasSubcommands": true,
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        }
+      ]
+    },
+    {
+      "path": [
+        "skills",
+        "import"
+      ],
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "dry-run"
+        },
+        {
+          "name": "force",
+          "shorthand": "f"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        }
+      ]
+    },
+    {
+      "path": [
+        "skills",
+        "ls"
+      ],
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        }
+      ]
+    },
+    {
+      "path": [
+        "stop"
+      ],
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        }
+      ],
+      "positionals": [
+        {
+          "name": "SANDBOX",
+          "kind": "sandbox"
+        },
+        {
+          "name": "SANDBOX",
+          "kind": "sandbox",
+          "optional": true,
+          "variadic": true
+        }
+      ]
+    },
+    {
+      "path": [
+        "template"
+      ],
+      "hasSubcommands": true,
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        }
+      ]
+    },
+    {
+      "path": [
+        "template",
+        "load"
+      ],
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        }
+      ],
+      "positionals": [
+        {
+          "name": "FILE",
+          "kind": "path"
+        }
+      ]
+    },
+    {
+      "path": [
+        "template",
+        "ls"
+      ],
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        },
+        {
+          "name": "json"
+        }
+      ]
+    },
+    {
+      "path": [
+        "template",
+        "rm"
+      ],
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        }
+      ],
+      "positionals": [
+        {
+          "name": "TAG|ID",
+          "kind": "reference"
+        }
+      ]
+    },
+    {
+      "path": [
+        "template",
+        "save"
+      ],
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        },
+        {
+          "name": "output",
+          "shorthand": "o",
+          "takesValue": true
+        }
+      ],
+      "positionals": [
+        {
+          "name": "SANDBOX",
+          "kind": "sandbox"
+        },
+        {
+          "name": "TAG",
+          "kind": "reference"
+        }
+      ]
+    },
+    {
+      "path": [
+        "tui"
+      ],
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        }
+      ]
+    },
+    {
+      "path": [
+        "version"
+      ],
+      "flags": [
+        {
+          "name": "debug",
+          "shorthand": "D"
+        },
+        {
+          "name": "help",
+          "shorthand": "h"
+        }
+      ]
+    }
+  ]
+}

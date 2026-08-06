@@ -1,7 +1,7 @@
 schemaVersion: "2"
 kind: mixin
 name: sbx-dev
-version: "0.2.0"
+version: "0.3.0"
 displayName: sbx-dev client
 description: |
   Installs the sbx-dev client, which forwards sbx commands to the sbx-dev
@@ -37,7 +37,7 @@ setup:
       # arrives would exit 0 and leave the sandbox without a client.
       command: |
         set -eu
-        version=v0.2.0
+        version=v0.3.0
         installer="$(mktemp)"
         trap 'rm -f "$installer"' EXIT
         curl -fsSL --retry 3 -o "$installer" \

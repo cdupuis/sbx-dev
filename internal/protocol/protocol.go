@@ -80,6 +80,33 @@ func (k Kind) String() string {
 	}
 }
 
+// The session handshake is HTTP rather than a frame, because a sandbox's egress
+// proxy can only substitute a secret that travels in an HTTP header. It trades
+// the caller's token for a single-use ticket, which then opens the framed
+// session below. The two share a port; LooksLikeHandshake tells them apart.
+const (
+	// SessionPath is the route that issues a session ticket.
+	SessionPath = "/v1/session"
+	// TokenHeader carries the caller's token on that request.
+	TokenHeader = "Sbx-Dev-Token"
+)
+
+// SessionResponse answers a successful handshake. ExpiresIn is in seconds.
+type SessionResponse struct {
+	Ticket    string `json:"ticket"`
+	ExpiresIn int    `json:"expires_in"`
+}
+
+// MagicLen is the number of leading bytes LooksLikeHandshake examines.
+const MagicLen = len(magic)
+
+// LooksLikeHandshake reports whether b opens a framed session, so a server
+// sharing one port between this protocol and the HTTP handshake can dispatch on
+// the first bytes of a connection.
+func LooksLikeHandshake(b []byte) bool {
+	return len(b) >= len(magic) && string(b[:len(magic)]) == magic
+}
+
 // Start opens a session. It is the first frame the client sends and carries
 // the command line to run verbatim as arguments to the server's sbx binary.
 type Start struct {

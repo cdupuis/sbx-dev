@@ -3,6 +3,7 @@
 package server
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
@@ -18,7 +19,9 @@ import (
 
 	"github.com/creack/pty"
 
-	"github.com/cdupuis/sbx-dev/internal/authtoken"
+	"github.com/cdupuis/sbx-dev/internal/authz"
+	"github.com/cdupuis/sbx-dev/internal/catalog"
+	"github.com/cdupuis/sbx-dev/internal/identity"
 	"github.com/cdupuis/sbx-dev/internal/protocol"
 )
 
@@ -47,16 +50,39 @@ type Config struct {
 	// AllowCommands optionally restricts which sbx subcommands may run. Empty
 	// allows every subcommand.
 	AllowCommands []string
+	// AllowEnv names the environment variables a session may set on the sbx
+	// process. Empty accepts none: a session's environment comes from the
+	// sandbox, and every name here hands that sandbox control of the variable's
+	// value for a process running on the host.
+	AllowEnv []string
+	// Authorizer decides which commands a caller may run. Setting it requires
+	// every session to present a sandbox identity token: the shared token names
+	// no sandbox, so a policy could not say anything about its holder, and
+	// accepting it would leave a way past every rule.
+	Authorizer *authz.Authorizer
+	// IdentityKey verifies identity tokens. It is required alongside Authorizer.
+	IdentityKey identity.Key
+	// Generations retires tokens that have been reissued. A nil registry accepts
+	// every generation, which is the state of a server that has revoked nothing.
+	Generations *identity.Registry
+	// Catalog describes the sbx command tree an argv is resolved against. It
+	// defaults to the embedded snapshot.
+	Catalog *catalog.Catalog
 	// HandshakeTimeout bounds the wait for an authenticated Start frame.
 	HandshakeTimeout time.Duration
-	Logger           *slog.Logger
+	// TicketTTL bounds how long a session ticket stays redeemable after the
+	// handshake that issued it. Zero takes the default.
+	TicketTTL time.Duration
+	Logger    *slog.Logger
 }
 
 // Server serves the sbx-dev protocol on a TCP listener.
 type Server struct {
-	cfg   Config
-	allow map[string]struct{}
-	log   *slog.Logger
+	cfg      Config
+	allow    map[string]struct{}
+	allowEnv map[string]struct{}
+	tickets  *tickets
+	log      *slog.Logger
 
 	mu sync.Mutex
 	ln net.Listener
@@ -97,6 +123,18 @@ func New(cfg Config) (*Server, error) {
 		cfg.Logger = slog.New(slog.DiscardHandler)
 	}
 
+	if cfg.Authorizer != nil {
+		if len(cfg.IdentityKey) == 0 {
+			return nil, errors.New("server: a policy needs an identity key to know which sandbox is calling")
+		}
+		if cfg.Catalog == nil {
+			cfg.Catalog, err = catalog.Embedded()
+			if err != nil {
+				return nil, fmt.Errorf("server: load command catalog: %w", err)
+			}
+		}
+	}
+
 	allow := make(map[string]struct{}, len(cfg.AllowCommands))
 	for _, cmd := range cfg.AllowCommands {
 		if cmd = strings.TrimSpace(cmd); cmd != "" {
@@ -104,7 +142,28 @@ func New(cfg Config) (*Server, error) {
 		}
 	}
 
-	return &Server{cfg: cfg, allow: allow, log: cfg.Logger}, nil
+	allowEnv := make(map[string]struct{}, len(cfg.AllowEnv))
+	for _, name := range cfg.AllowEnv {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			continue
+		}
+		if !envNamePattern.MatchString(name) {
+			return nil, fmt.Errorf("server: %q is not a valid environment variable name", name)
+		}
+		if _, hijack := hijackEnv[name]; hijack {
+			return nil, fmt.Errorf("server: refusing to forward %s: a sandbox that sets it chooses which code the host runs", name)
+		}
+		allowEnv[name] = struct{}{}
+	}
+
+	return &Server{
+		cfg:      cfg,
+		allow:    allow,
+		allowEnv: allowEnv,
+		tickets:  newTickets(cfg.TicketTTL, nil),
+		log:      cfg.Logger,
+	}, nil
 }
 
 // SbxPath returns the resolved sbx binary.
@@ -182,13 +241,31 @@ func (s *Server) Serve(ctx context.Context) error {
 	}
 }
 
+// handleConn dispatches one connection. The port carries both the HTTP
+// handshake that issues session tickets and the framed sessions themselves, so
+// the opening bytes decide which of the two this connection is.
 func (s *Server) handleConn(ctx context.Context, conn net.Conn) {
 	defer conn.Close()
 
+	_ = conn.SetDeadline(time.Now().Add(s.cfg.HandshakeTimeout))
+
+	br := bufio.NewReader(conn)
+	prefix, err := br.Peek(protocol.MagicLen)
+	if err != nil {
+		s.log.Debug(fmt.Sprintf("%s disconnected before sending anything: %v", conn.RemoteAddr(), err))
+		return
+	}
+	if !protocol.LooksLikeHandshake(prefix) {
+		s.serveHandshake(conn, br)
+		return
+	}
+	s.runFramedSession(ctx, peekedConn{Conn: conn, r: br})
+}
+
+func (s *Server) runFramedSession(ctx context.Context, conn net.Conn) {
 	peer := conn.RemoteAddr().String()
 	fw := protocol.NewWriter(conn)
 
-	_ = conn.SetDeadline(time.Now().Add(s.cfg.HandshakeTimeout))
 	start, err := readStart(conn)
 	if err != nil {
 		s.log.Warn(fmt.Sprintf("rejected %s: %v", peer, err))
@@ -198,16 +275,25 @@ func (s *Server) handleConn(ctx context.Context, conn net.Conn) {
 		})
 		return
 	}
-	if !authtoken.Equal(start.Token, s.cfg.Token) {
-		s.log.Warn(fmt.Sprintf("rejected %s: invalid token", peer))
+	caller, err := s.authenticateSession(peer, start.Token)
+	if err != nil {
+		s.log.Warn(fmt.Sprintf("rejected %s: %v", peer, err))
 		_ = fw.WriteJSON(protocol.KindExit, protocol.Exit{
 			Code:    protocol.ExitProtocol,
-			Message: "invalid token",
+			Message: err.Error(),
 		})
 		return
 	}
 	if err := s.checkAllowed(start.Args); err != nil {
 		s.log.Warn(fmt.Sprintf("rejected %s: %v", peer, err))
+		_ = fw.WriteJSON(protocol.KindExit, protocol.Exit{
+			Code:    protocol.ExitNoExec,
+			Message: err.Error(),
+		})
+		return
+	}
+	if err := s.authorize(caller, start.Args); err != nil {
+		s.log.Warn(fmt.Sprintf("rejected %s: %v", caller, err))
 		_ = fw.WriteJSON(protocol.KindExit, protocol.Exit{
 			Code:    protocol.ExitNoExec,
 			Message: err.Error(),
@@ -221,9 +307,9 @@ func (s *Server) handleConn(ctx context.Context, conn net.Conn) {
 		return
 	}
 
-	s.log.Info(fmt.Sprintf("%s runs %s", peer, describeCommand(start)))
+	s.log.Info(fmt.Sprintf("%s runs %s", caller, describeCommand(start)))
 	result := s.runSession(ctx, start, protocol.NewReader(conn), fw)
-	s.log.Info(fmt.Sprintf("%s %s", peer, describeResult(result)))
+	s.log.Info(fmt.Sprintf("%s %s", caller, describeResult(result)))
 
 	if err := fw.WriteJSON(protocol.KindExit, result); err != nil {
 		s.log.Debug(fmt.Sprintf("could not report the exit code to %s: %v", peer, err))
@@ -313,9 +399,13 @@ func (s *Server) runSession(ctx context.Context, start protocol.Start, fr *proto
 
 func (s *Server) childEnv(start protocol.Start) []string {
 	env := os.Environ()
-	for name, value := range start.Env {
-		env = append(env, name+"="+value)
+
+	accepted, refused := filterEnv(start.Env, s.allowEnv)
+	env = append(env, accepted...)
+	if len(refused) > 0 {
+		s.log.Warn(fmt.Sprintf("ignored these variables the session asked to set: %s", strings.Join(refused, ", ")))
 	}
+
 	if start.TTY {
 		term := start.Term
 		if term == "" {

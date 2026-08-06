@@ -1,0 +1,519 @@
+// The vocabulary an sbx-dev policy is written against.
+//
+// Generated from the embedded sbx command catalog. Do not edit: run
+// "task policy:schema" to regenerate it after the catalog changes.
+//
+// One part of the request cannot be expressed here. context.flagValues holds the
+// value of each flag a command was given, keyed by flag name, and Cedar records
+// have fixed attributes — the keys depend on which command ran, so the record
+// cannot be typed. Policies may still read it; only this schema is silent about
+// it.
+
+namespace SBX {
+    // A named group a sandbox belongs to. Membership comes from the policy map,
+    // which assigns groups to sandbox names and patterns.
+    entity Group;
+
+    // The calling sandbox, and the sandbox a command acts on.
+    entity Sandbox in [Group] {
+        // The sandbox's name, for patterns: principal.name like "worker-*".
+        name: String,
+    };
+
+    // The resource for a command that acts on the host rather than on one
+    // sandbox, such as "sbx ls" or "sbx daemon status".
+    entity Host;
+
+    // What the server parsed out of the command line.
+    type Invocation = {
+        // The full command path, so "policy allow network".
+        command: String,
+        // The names of the flags the command was given.
+        flags: Set<String>,
+        // Every host path the command names, made absolute against the
+        // server's working directory and cleaned, so ".." cannot walk out of a
+        // confined tree.
+        hostPaths: Set<String>,
+        // The deepest directory containing all of hostPaths. Cedar cannot test
+        // every member of a set, so confinement is expressed against this: it
+        // lies under a prefix exactly when all the paths do.
+        hostPathsRoot: String,
+        // Whether every host path lies under the directory sbx-dev runs in.
+        // True when the command names no host path. This is the portable form
+        // of confinement, for a policy that should not name a site's
+        // directory.
+        hostPathsUnderWorkdir: Bool,
+        // Paths inside a sandbox, from the "sandbox:/path" form sbx cp
+        // accepts.
+        sandboxPaths: Set<String>,
+        // Every sandbox the command names.
+        sandboxes: Set<String>,
+        // Image-like references the command names.
+        references: Set<String>,
+        // Network destinations the command names.
+        network: Set<String>,
+        // Whether the command names at least one sandbox and every sandbox it
+        // names is the caller. Naming a sibling alongside itself is not
+        // "itself".
+        targetsSelf: Bool,
+        // Whether the command names no sandbox and so acts on the host.
+        targetsHost: Bool,
+        // Whether the command carries arguments for another program, as "sbx
+        // exec" does. Their content is opaque, so a policy can refuse them but
+        // not inspect them.
+        forwardsArguments: Bool,
+    };
+
+    // Capability groups. A policy grants one of these rather than a list of
+    // command names, so it keeps meaning what it meant as sbx grows.
+    action "read";
+    action "inspectSecrets";
+    action "createSandbox";
+    action "destroySandbox";
+    action "changeSandbox";
+    action "runInSandbox";
+    action "touchHostFiles";
+    action "writePolicy";
+    action "writeSecrets";
+    action "controlDaemon";
+    action "publishArtifacts";
+
+    // Every command sbx offers. A command in no group can only be granted by
+    // name, which is why a policy written in groups cannot reach a new one by
+    // accident.
+    action "completion" appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "completion bash" appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "completion fish" appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "completion powershell" appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "completion zsh" appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "cp" in ["touchHostFiles", "changeSandbox"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "create" in ["createSandbox", "touchHostFiles"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "create claude" in ["createSandbox", "touchHostFiles"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "create codex" in ["createSandbox", "touchHostFiles"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "create copilot" in ["createSandbox", "touchHostFiles"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "create cursor" in ["createSandbox", "touchHostFiles"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "create docker-agent" in ["createSandbox", "touchHostFiles"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "create droid" in ["createSandbox", "touchHostFiles"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "create gemini" in ["createSandbox", "touchHostFiles"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "create kiro" in ["createSandbox", "touchHostFiles"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "create opencode" in ["createSandbox", "touchHostFiles"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "create shell" in ["createSandbox", "touchHostFiles"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "daemon" appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "daemon log-level" in ["read"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "daemon log-level set" in ["controlDaemon"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "daemon restart" in ["controlDaemon"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "daemon start" in ["controlDaemon"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "daemon status" in ["read"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "daemon stop" in ["controlDaemon"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "diagnose" in ["read"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "exec" in ["runInSandbox"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "kit" appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "kit add" in ["changeSandbox"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "kit inspect" in ["read"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "kit pack" in ["touchHostFiles"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "kit provenance" in ["read"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "kit pull" in ["touchHostFiles"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "kit push" in ["publishArtifacts"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "kit sign" in ["touchHostFiles"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "kit validate" in ["touchHostFiles"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "kit verify" in ["read"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "login" in ["writeSecrets"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "logout" in ["writeSecrets"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "ls" in ["read"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "mcp" appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "mcp add" in ["changeSandbox"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "mcp auth" in ["changeSandbox", "writeSecrets"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "mcp auth rm" in ["writeSecrets"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "mcp auth status" in ["read"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "mcp inspect" in ["read"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "mcp load" in ["changeSandbox"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "mcp ls" in ["read"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "mcp rm" in ["changeSandbox"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "policy" appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "policy allow" in ["writePolicy"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "policy allow network" in ["writePolicy"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "policy check" appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "policy check network" in ["read"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "policy deny" in ["writePolicy"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "policy deny network" in ["writePolicy"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "policy init" in ["writePolicy"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "policy inspect" in ["read"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "policy log" in ["read"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "policy ls" in ["read"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "policy reset" in ["writePolicy"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "policy rm" in ["writePolicy"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "policy rm network" in ["writePolicy"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "ports" in ["read"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "prune" in ["destroySandbox"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "reset" in ["destroySandbox", "writePolicy", "writeSecrets"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "rm" in ["destroySandbox"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "run" in ["createSandbox", "runInSandbox", "touchHostFiles"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "secret" appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "secret import" in ["writeSecrets", "touchHostFiles"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "secret ls" in ["inspectSecrets"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "secret rm" in ["writeSecrets"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "secret set" in ["writeSecrets"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "secret set-custom" in ["writeSecrets"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "setup" appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "setup ssh" in ["writeSecrets", "touchHostFiles"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "setup ssh remove" in ["writeSecrets", "touchHostFiles"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "skills" appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "skills import" in ["changeSandbox", "touchHostFiles"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "skills ls" in ["read"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "stop" in ["destroySandbox"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "template" appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "template load" in ["createSandbox", "touchHostFiles"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "template ls" in ["read"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "template rm" in ["changeSandbox"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "template save" in ["changeSandbox"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "tui" in ["createSandbox", "runInSandbox", "touchHostFiles"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+    action "version" in ["read"] appliesTo {
+        principal: [Sandbox],
+        resource: [Sandbox, Host],
+        context: Invocation
+    };
+}

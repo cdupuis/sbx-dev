@@ -48,6 +48,19 @@ tasks:
         vars: {GOOS: '{{.GOOS}}', GOARCH: '{{.GOARCH}}'}
       - sbx cp {{.BIN}}/sbx-{{.GOOS}}-{{.GOARCH}} {{.SANDBOX}}:/usr/local/bin/sbx
 
+  catalog:generate:
+    desc: Regenerate the embedded sbx command catalog (SANDBOXES overrides the sbx checkout)
+    vars:
+      SANDBOXES: '{{.SANDBOXES | default "../sandboxes"}}'
+    cmds:
+      - go run ./cmd/gen-catalog --docs {{.SANDBOXES}}/docs/yml
+      - task: policy:schema
+
+  policy:schema:
+    desc: Regenerate the Cedar schema documenting the policy vocabulary
+    cmds:
+      - go run ./cmd/gen-schema
+
   test:
     desc: Run all tests
     cmds:

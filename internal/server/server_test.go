@@ -39,6 +39,8 @@ case "$cmd" in
   both) printf 'to-stdout\n'; printf 'to-stderr\n' >&2 ;;
   fail) exit "${1:-3}" ;;
   show-env) printenv "$1" ;;
+  version) printf 'sbx version: test\n' ;;
+  rm) printf 'removed:%s\n' "$1" ;;
   tty) if [ -t 1 ]; then printf 'tty\n'; else printf 'notty\n'; fi ;;
   winsize) stty size ;;
   workdir) pwd ;;
@@ -205,12 +207,17 @@ func TestSilentPeerIsUnreachable(t *testing.T) {
 	require.NoError(t, err)
 	defer ln.Close()
 
+	// Every connection, not just the first: a client greets the handshake
+	// endpoint before it opens a session, and a proxy standing in for an absent
+	// host accepts both.
 	go func() {
-		conn, err := ln.Accept()
-		if err != nil {
-			return
+		for {
+			conn, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			_ = conn.Close()
 		}
-		_ = conn.Close()
 	}()
 
 	got := runClient(t, ln.Addr().String(), testToken, nil, "echo-args")
@@ -235,22 +242,39 @@ func TestSessionAllowsListedSubcommandAfterFlags(t *testing.T) {
 	require.Equal(t, "args:ok\n", got.stdout)
 }
 
-func TestSessionForwardsRequestedEnv(t *testing.T) {
+func TestSessionForwardsAllowedEnv(t *testing.T) {
+	addr := startServer(t, Config{AllowEnv: []string{"SBX_DEV_TEST_VAR"}})
+
+	code, stdout := showEnvSession(t, addr, "SBX_DEV_TEST_VAR", "forwarded")
+	require.Equal(t, 0, code)
+	require.Equal(t, "forwarded\n", stdout)
+}
+
+func TestSessionDropsEnvItWasNotAllowedToSet(t *testing.T) {
 	addr := startServer(t, Config{})
+
+	// printenv exits 1 for a name it cannot find, which is how the child
+	// reports that the variable never reached it.
+	code, stdout := showEnvSession(t, addr, "SBX_DEV_TEST_VAR", "forwarded")
+	require.Equal(t, 1, code)
+	require.Empty(t, stdout)
+}
+
+func showEnvSession(t *testing.T, addr, name, value string) (int, string) {
+	t.Helper()
 
 	var stdout, stderr bytes.Buffer
 	code, err := client.Run(context.Background(), client.Config{
 		Addr:   addr,
 		Token:  testToken,
-		Args:   []string{"show-env", "SBX_DEV_TEST_VAR"},
-		Env:    map[string]string{"SBX_DEV_TEST_VAR": "forwarded"},
+		Args:   []string{"show-env", name},
+		Env:    map[string]string{name: value},
 		Stdout: &stdout,
 		Stderr: &stderr,
 		TTYFd:  client.NoTTY,
 	})
 	require.NoError(t, err)
-	require.Equal(t, 0, code)
-	require.Equal(t, "forwarded\n", stdout.String())
+	return code, stdout.String()
 }
 
 func TestSessionAllocatesTTYWhenRequested(t *testing.T) {
@@ -259,7 +283,7 @@ func TestSessionAllocatesTTYWhenRequested(t *testing.T) {
 	// client.Run only negotiates a PTY when its own stdin is a terminal, which
 	// a test process has no reason to own, so drive the protocol directly.
 	stdout, exit := rawSession(t, addr, protocol.Start{
-		Token: testToken,
+		Token: ticketFor(t, addr, testToken),
 		Args:  []string{"tty"},
 		TTY:   true,
 		Term:  "xterm-256color",
@@ -274,7 +298,7 @@ func TestSessionAppliesRequestedWindowSize(t *testing.T) {
 	addr := startServer(t, Config{})
 
 	stdout, exit := rawSession(t, addr, protocol.Start{
-		Token: testToken,
+		Token: ticketFor(t, addr, testToken),
 		Args:  []string{"winsize"},
 		TTY:   true,
 		Rows:  40,
@@ -288,7 +312,7 @@ func TestSessionFallsBackToConventionalWindowSize(t *testing.T) {
 	addr := startServer(t, Config{})
 
 	stdout, exit := rawSession(t, addr, protocol.Start{
-		Token: testToken,
+		Token: ticketFor(t, addr, testToken),
 		Args:  []string{"winsize"},
 		TTY:   true,
 	})
@@ -300,7 +324,7 @@ func TestSessionSetsTermForTTY(t *testing.T) {
 	addr := startServer(t, Config{})
 
 	stdout, exit := rawSession(t, addr, protocol.Start{
-		Token: testToken,
+		Token: ticketFor(t, addr, testToken),
 		Args:  []string{"show-env", "TERM"},
 		TTY:   true,
 		Term:  "vt220",

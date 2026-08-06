@@ -61,6 +61,14 @@ func Run(ctx context.Context, cfg Config) (int, error) {
 		cfg.DialTimeout = 10 * time.Second
 	}
 
+	// Authenticate before dialing, so the session presents a ticket rather than
+	// the token it was configured with.
+	ticket, err := acquireTicket(ctx, cfg)
+	if err != nil {
+		return protocol.ExitProtocol, err
+	}
+	cfg.Token = ticket
+
 	dialer := net.Dialer{Timeout: cfg.DialTimeout}
 	conn, err := dialer.DialContext(ctx, "tcp", cfg.Addr)
 	if err != nil {

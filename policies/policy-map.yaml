@@ -1,0 +1,30 @@
+# Which policies apply to which sandboxes.
+#
+# Every binding whose pattern matches the calling sandbox applies, so order does
+# not matter: the baseline bound to "*" cannot be skipped by an entry below it.
+# Cedar decides the rest — permits accumulate, and a forbid in any matching file
+# beats all of them.
+#
+# A sandbox that matches no binding is granted nothing and is told so, which
+# distinguishes "I forgot to bind this sandbox" from "a rule refused".
+#
+# Policy paths are relative to this file. Patterns are globs over the sandbox
+# name: "*" matches any run of characters, "?" a single one, and a pattern
+# without a wildcard is an exact name.
+
+bindings:
+  # Guardrails and a floor of read-only access for every sandbox.
+  - sandboxes: "*"
+    policies:
+      - baseline.cedar
+      - readonly.cedar
+
+  # Sandboxes named worker-something may work on themselves.
+  - sandboxes: "worker-*"
+    policies: worker.cedar
+    groups: workers
+
+  # One named sandbox manages the others.
+  - sandboxes: orchestrator
+    policies: orchestrator.cedar
+    groups: orchestrators
